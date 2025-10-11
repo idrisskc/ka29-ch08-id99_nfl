@@ -1,23 +1,55 @@
+# =======================================================
+# 🔧 utils.py - Fonctions pour NFL Analytics Dashboard
+# =======================================================
 import os
 import pandas as pd
 import numpy as np
+import zipfile
+import subprocess
 
 # =======================================================
-# 🔹 Chargement des données locales (ou depuis Kaggle)
+# 🔹 Téléchargement et extraction depuis Kaggle
+# =======================================================
+def download_from_kaggle(username, key, base_dir="./data"):
+    """
+    Télécharge les fichiers de la compétition Kaggle et les extrait.
+    """
+    os.environ["KAGGLE_USERNAME"] = username
+    os.environ["KAGGLE_KEY"] = key
+
+    kaggle_json_path = os.path.expanduser("~/.kaggle")
+    os.makedirs(kaggle_json_path, exist_ok=True)
+    with open(os.path.join(kaggle_json_path, "kaggle.json"), "w") as f:
+        f.write(f'{{"username":"{username}","key":"{key}"}}')
+    os.chmod(os.path.join(kaggle_json_path, "kaggle.json"), 0o600)
+
+    os.makedirs(base_dir, exist_ok=True)
+    zip_path = os.path.join(base_dir, "nfl_data.zip")
+
+    print("📦 Téléchargement depuis Kaggle...")
+    subprocess.run([
+        "kaggle", "competitions", "download",
+        "-c", "nfl-big-data-bowl-2026-analytics",
+        "-p", base_dir, "--force"
+    ], check=True)
+
+    # Extraction
+    print("📂 Extraction...")
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(base_dir)
+
+    print("✅ Données extraites dans :", base_dir)
+
+# =======================================================
+# 🔹 Chargement local des données
 # =======================================================
 def load_data(base_dir="./data"):
-    """
-    Charge les différents fichiers CSV à partir du répertoire spécifié.
-    Retourne 6 DataFrames (pour compatibilité future).
-    """
     full_df, df_input, df_out, df_supp, tr_sample, prethrow = [pd.DataFrame()]*6
 
-    # Fichier de données supplémentaires
     supp_path = os.path.join(base_dir, "supplementary_data.csv")
     if os.path.exists(supp_path):
         df_supp = pd.read_csv(supp_path)
 
-    # Exemple de fichier d'entraînement
     train_dir = os.path.join(base_dir, "train")
     if os.path.exists(train_dir):
         csv_files = [f for f in os.listdir(train_dir) if f.endswith(".csv")]
@@ -27,37 +59,30 @@ def load_data(base_dir="./data"):
 
     return full_df, df_input, df_out, df_supp, tr_sample, prethrow
 
-
 # =======================================================
-# 🔹 Calcul des KPIs agrégés
+# 🔹 Calcul des KPIs
 # =======================================================
 def compute_all_kpis_and_aggregate(full_df, df_input, df_out, df_supp, tr_sample, prethrow):
-    """
-    Calcule les indicateurs de performance (KPIs) et un échantillon de KPIs de passes.
-    """
-    def safe_mean(df, col):
-        """Retourne la moyenne d'une colonne si elle existe, sinon NaN."""
-        return float(df[col].mean()) if col in df.columns else np.nan
+    def safe_mean(df, col): return float(df[col].mean()) if col in df.columns else np.nan
 
-    # Ensemble de KPIs fictifs (à remplacer avec des vraies colonnes du dataset)
     kpis = {
-        'PPE': safe_mean(full_df, 'yards_gained'),             # Points par essai
-        'CBR': safe_mean(full_df, 'completion_probability'),   # Taux de complétion
-        'FFM': safe_mean(full_df, 'frame_id'),                 # Frame moyenne
-        'ADY': safe_mean(full_df, 'distance'),                 # Distance moyenne
-        'TDR': safe_mean(full_df, 'time'),                     # Temps moyen
-        'PEI': safe_mean(full_df, 'event'),                    # Événement moyen
-        'CWE': safe_mean(full_df, 'closest_defender_distance'),# Distance au défenseur
-        'EDS': safe_mean(full_df, 'end_speed'),                # Vitesse finale
-        'VMC': safe_mean(full_df, 's'),                        # Vitesse max
-        'PMA': safe_mean(full_df, 'play_result'),              # Résultat moyen
-        'PER': safe_mean(full_df, 'expected_yards'),           # Yards attendus
-        'RCI': safe_mean(full_df, 'receiver_id'),              # ID receveur moyen
-        'SMV': safe_mean(full_df, 'speed_max'),                # Vitesse max moyenne
-        'AEF': safe_mean(full_df, 'acceleration'),             # Accélération moyenne
+        'PPE': safe_mean(full_df, 'yards_gained'),
+        'CBR': safe_mean(full_df, 'completion_probability'),
+        'FFM': safe_mean(full_df, 'frame_id'),
+        'ADY': safe_mean(full_df, 'distance'),
+        'TDR': safe_mean(full_df, 'time'),
+        'PEI': safe_mean(full_df, 'event'),
+        'CWE': safe_mean(full_df, 'closest_defender_distance'),
+        'EDS': safe_mean(full_df, 'end_speed'),
+        'VMC': safe_mean(full_df, 's'),
+        'PMA': safe_mean(full_df, 'play_result'),
+        'PER': safe_mean(full_df, 'expected_yards'),
+        'RCI': safe_mean(full_df, 'receiver_id'),
+        'SMV': safe_mean(full_df, 'speed_max'),
+        'AEF': safe_mean(full_df, 'acceleration')
     }
 
-    # Données simulées pour illustrer le dashboard
+    # Simulated pass KPIs
     df_pass_kpis = pd.DataFrame({
         'cli_final': np.random.rand(50),
         'max_dai': np.random.rand(50),
