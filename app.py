@@ -1,67 +1,70 @@
 # =======================================================
-# 🏈 NFL Analytics Dashboard - Streamlit App
+# 🏈 NFL Big Data Bowl 2026 - Analytics Dashboard (Streamlit)
 # =======================================================
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-from utils import load_data, compute_all_kpis_and_aggregate
+import os
+from utils import load_data, compute_all_kpis_and_aggregate, download_from_kaggle
 
 # =======================================================
-# ⚙️ Configuration de la page
+# ⚙️ Configuration de la page Streamlit
 # =======================================================
-st.set_page_config(
-    page_title="NFL Big Data Bowl 2026 Analytics",
-    layout="wide",
-    page_icon="🏈"
-)
-
+st.set_page_config(page_title="NFL Big Data Bowl 2026", layout="wide", page_icon="🏈")
 st.title("🏈 NFL Big Data Bowl 2026 - Analytics Dashboard")
-st.markdown("""
-Ce **tableau de bord interactif** permet d'explorer les données du NFL Big Data Bowl 2026, 
-d'analyser les performances à travers des **KPIs clés** et de visualiser les **tendances par joueur et défenseur**.
-""")
+st.markdown("Explore, visualise, and understand **NFL tracking data** from the 2026 Big Data Bowl.")
 
 # =======================================================
-# 📂 Chargement des données
+# 📦 Paramètres (Kaggle ou Local)
 # =======================================================
-with st.sidebar:
-    st.header("⚙️ Paramètres de chargement")
-    st.markdown("**Source des données** : dossier contenant les fichiers CSV extraits de Kaggle.")
-    base_dir = st.text_input("Chemin du dossier de données :", "./data")
-    load_btn = st.button("📥 Charger les données")
+st.sidebar.header("⚙️ Configuration des données")
 
-if load_btn:
+data_mode = st.sidebar.radio("Source des données :", ["Télécharger depuis Kaggle", "Charger localement"])
+base_dir = "./data"
+
+if data_mode == "Télécharger depuis Kaggle":
+    kaggle_username = st.sidebar.text_input("Kaggle Username", os.getenv("KAGGLE_USERNAME", ""))
+    kaggle_key = st.sidebar.text_input("Kaggle API Key", os.getenv("KAGGLE_KEY", ""), type="password")
+    if st.sidebar.button("📥 Télécharger les données Kaggle"):
+        if not kaggle_username or not kaggle_key:
+            st.error("Veuillez entrer vos identifiants Kaggle.")
+            st.stop()
+        download_from_kaggle(kaggle_username, kaggle_key, base_dir)
+        st.success("✅ Données téléchargées et extraites avec succès.")
+else:
+    st.sidebar.info("Assurez-vous d'avoir placé les fichiers dans `./data/` avant de charger.")
+
+# =======================================================
+# 📊 Chargement des données et calcul des KPIs
+# =======================================================
+if st.sidebar.button("🚀 Charger et analyser"):
     try:
         full_df, df_input, df_out, df_supp, tr_sample, prethrow = load_data(base_dir=base_dir)
-        st.session_state["data_loaded"] = True
+        kpis, df_pass_kpis = compute_all_kpis_and_aggregate(full_df, df_input, df_out, df_supp, tr_sample, prethrow)
         st.success("✅ Données chargées avec succès.")
     except Exception as e:
         st.error(f"Erreur lors du chargement : {e}")
         st.stop()
 else:
-    st.info("👉 Charge les données via le menu latéral pour continuer.")
+    st.info("Clique sur **Charger et analyser** pour lancer l'analyse.")
     st.stop()
 
 # =======================================================
-# 📊 Calcul et affichage des KPIs globaux
+# 📈 Affichage des KPIs
 # =======================================================
-st.subheader("📈 Indicateurs de performance (KPIs)")
-
-kpis, df_pass_kpis = compute_all_kpis_and_aggregate(full_df, df_input, df_out, df_supp, tr_sample, prethrow)
-
+st.subheader("📈 Indicateurs de performance globaux")
 cols = st.columns(4)
 for i, (k, v) in enumerate(kpis.items()):
     with cols[i % 4]:
         st.metric(label=k, value=f"{v:.3f}" if isinstance(v, (int, float)) and not np.isnan(v) else "—")
 
 # =======================================================
-# 🎯 Analyse des KPIs de passes
+# 🎯 Analyse des passes (Pass KPIs)
 # =======================================================
 if not df_pass_kpis.empty:
-    st.subheader("🎯 Analyse des passes (Pass KPIs)")
-    
-    # Sélecteurs interactifs
+    st.subheader("🎯 Analyse des passes")
+
     col1, col2 = st.columns(2)
     player_selected = col1.selectbox("Sélectionner un Quarterback (QB)", df_pass_kpis["player_id"].unique())
     defender_selected = col2.selectbox("Sélectionner un Défenseur", df_pass_kpis["defender_id"].unique())
@@ -71,25 +74,20 @@ if not df_pass_kpis.empty:
         (df_pass_kpis["defender_id"] == defender_selected)
     ]
 
-    # Graphique scatter
     fig = px.scatter(
         filtered_df,
-        x="cli_final",
-        y="ADR",
-        size="sm_max",
-        color="ME",
+        x="cli_final", y="ADR",
+        size="sm_max", color="ME",
         hover_data=["max_dai", "cci_n_def_in_R"],
-        title=f"Relations entre KPIs de passes ({player_selected} vs {defender_selected})"
+        title=f"Relations entre KPIs ({player_selected} vs {defender_selected})"
     )
     st.plotly_chart(fig, use_container_width=True)
-
-    # Tableau détaillé
     st.dataframe(filtered_df.head(20), use_container_width=True)
 else:
-    st.warning("Aucun KPI de passe disponible dans les données chargées.")
+    st.warning("Aucun KPI de passe disponible.")
 
 # =======================================================
 # 📜 Pied de page
 # =======================================================
 st.markdown("---")
-st.caption("Développé pour l’analyse du NFL Big Data Bowl 2026 • Exécution sur Streamlit Cloud / Colab")
+st.caption("NFL Big Data Bowl 2026 • Streamlit Dashboard • Données Kaggle automatisées")
