@@ -1,17 +1,20 @@
 # 🏈 NFL Big Data Bowl 2026 - Analytics Dashboard
 
-Ce projet Streamlit explore les données de la compétition **NFL Big Data Bowl 2026** via des KPIs avancés et des visualisations interactives (Plotly).
+This Streamlit project explores data from the **NFL Big Data Bowl 2026** competition through advanced KPIs and interactive visualizations (Plotly).
 
-## 🧩 Fonctionnalités
-- Calcul automatique des KPIs NFL
-- Analyse des passes et défenses
-- Comparaison entre joueurs (radar chart)
-- Export des résultats (CSV, Excel)
+## 🧩 Features
 
-## 📦 Déploiement
-1. Fork ce repo sur ton GitHub.
-2. Connecte-toi à [Streamlit Cloud](https://streamlit.io/cloud).
-3. Choisis “New app” → ton repo.
-4. Configure les **secrets** (KAGGLE_USERNAME, KAGGLE_KEY, NFL_DATA_DIR).
-5. Lance ton app 🎉
+* Automatic computation of NFL performance KPIs
+* Passing and defensive play analysis
+* Player comparison via radar charts
+* Export results to CSV or Excel
 
+## 📦 Deployment
+
+1. Fork this repository on your GitHub account.
+2. Log in to [Streamlit Cloud](https://streamlit.io/cloud).
+3. Select **“New app”** → choose your repository.
+4. Configure the **secrets** (`KAGGLE_USERNAME`, `KAGGLE_KEY`, `NFL_DATA_DIR`).
+5. Launch your app 🎉
+
+---
