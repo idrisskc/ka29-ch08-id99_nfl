@@ -2,7 +2,7 @@
 
 Ce projet Streamlit explore les données de la compétition **NFL Big Data Bowl 2026** via des KPIs avancés et des visualisations interactives (Plotly).
 
-## 🚀 Fonctionnalités
+## 🧩 Fonctionnalités
 - Calcul automatique des KPIs NFL
 - Analyse des passes et défenses
 - Comparaison entre joueurs (radar chart)
