@@ -1,77 +1,77 @@
 # =======================================================
-# app.py - NFL Big Data Bowl 2026 Dashboard (DEBUG VERSION)
+# app.py - NFL Big Data Bowl 2026 Dashboard (WITH DEBUG)
 # =======================================================
-
 import sys
 import streamlit as st
 
-# Afficher les informations de débogage
-st.write("🔍 **Debug Info:**")
-st.write(f"Python version: {sys.version}")
-st.write(f"Streamlit version: {st.__version__}")
+# =======================================================
+# 🔍 DEBUG MODE - Show import status
+# =======================================================
+st.sidebar.markdown("### 🔍 Debug Info")
 
-# Test des imports étape par étape
+try:
+    st.sidebar.success(f"✅ Python {sys.version_info.major}.{sys.version_info.minor}")
+except:
+    pass
+
+# Test imports step by step
 try:
     import pandas as pd
-    st.success("✅ pandas imported")
+    st.sidebar.success("✅ pandas")
 except Exception as e:
-    st.error(f"❌ pandas error: {e}")
+    st.sidebar.error(f"❌ pandas: {e}")
     st.stop()
 
 try:
     import numpy as np
-    st.success("✅ numpy imported")
+    st.sidebar.success("✅ numpy")
 except Exception as e:
-    st.error(f"❌ numpy error: {e}")
+    st.sidebar.error(f"❌ numpy: {e}")
     st.stop()
 
 try:
     import plotly.express as px
-    st.success("✅ plotly imported")
+    import plotly.graph_objects as go
+    st.sidebar.success("✅ plotly")
 except Exception as e:
-    st.error(f"❌ plotly error: {e}")
+    st.sidebar.error(f"❌ plotly: {e}")
     st.stop()
 
 try:
     from datetime import datetime
-    st.success("✅ datetime imported")
+    st.sidebar.success("✅ datetime")
 except Exception as e:
-    st.error(f"❌ datetime error: {e}")
+    st.sidebar.error(f"❌ datetime: {e}")
     st.stop()
 
-# Test de l'import de utils.py
+# Test utils.py import
 try:
-    import utils
-    st.success("✅ utils.py found and imported")
-    
-    # Vérifier les fonctions
-    required_functions = [
-        'load_data_from_kaggle',
-        'compute_all_kpis',
-        'load_local_data',
-        'get_column_info',
-        'detect_available_columns',
-        'get_data_summary'
-    ]
-    
-    for func_name in required_functions:
-        if hasattr(utils, func_name):
-            st.success(f"✅ Function '{func_name}' exists")
-        else:
-            st.error(f"❌ Function '{func_name}' missing")
-    
-except Exception as e:
-    st.error(f"❌ utils.py import error: {e}")
-    st.info("**Solution:** Make sure utils.py is in the same directory as app.py")
+    from utils import (
+        load_data_from_kaggle, 
+        compute_all_kpis, 
+        load_local_data,
+        get_column_info,
+        detect_available_columns,
+        get_data_summary
+    )
+    st.sidebar.success("✅ utils.py imported")
+except ImportError as e:
+    st.sidebar.error(f"❌ utils.py: {str(e)}")
+    st.error("**ERROR:** utils.py not found or has import errors")
+    st.info("Make sure utils.py is in the same directory as app.py")
     st.code(str(e), language="python")
     st.stop()
+except Exception as e:
+    st.sidebar.error(f"❌ utils.py error: {str(e)}")
+    st.error(f"**ERROR in utils.py:** {str(e)}")
+    st.stop()
 
-# Si tout est OK, continuer avec l'app normale
-st.success("🎉 All imports successful! Starting main app...")
+st.sidebar.success("🎉 All imports OK!")
+st.sidebar.markdown("---")
 
-# ---------------------
+# =======================================================
 # ⚙️ Page Configuration
-# ---------------------
+# =======================================================
 st.set_page_config(
     page_title="NFL Big Data Bowl 2026", 
     layout="wide", 
@@ -79,21 +79,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Import des fonctions depuis utils
-from utils import (
-    load_data_from_kaggle, 
-    compute_all_kpis, 
-    load_local_data,
-    get_column_info,
-    detect_available_columns,
-    get_data_summary
-)
-
 # ---------------------
 # 🎨 NFL Color Palette
 # ---------------------
 COLOR_BG = "#0B0C10"
 COLOR_PANEL = "#1B263B"
+COLOR_ACCENT = "#C1121F"
 COLOR_GOLD = "#FFD700"
 COLOR_SILVER = "#A9A9A9"
 TEXT_COLOR = "#E6EEF8"
@@ -103,17 +94,46 @@ TEXT_COLOR = "#E6EEF8"
 # ---------------------
 st.markdown(f"""
 <style>
-.stApp {{ background-color: {COLOR_BG}; color: {TEXT_COLOR}; }}
+.stApp {{ 
+    background-color: {COLOR_BG}; 
+    color: {TEXT_COLOR}; 
+}}
+[data-testid="stSidebar"] > div:first-child {{
+    background: linear-gradient(180deg, {COLOR_PANEL}, #0b0c10);
+    border-right: 1px solid rgba(255,255,255,0.1);
+    padding: 1.5rem;
+}}
 .kpi-card {{
     background: linear-gradient(135deg, rgba(193,18,31,0.1), rgba(27,38,59,0.3));
     border: 1px solid rgba(255,215,0,0.2);
     border-radius: 12px;
     padding: 20px;
     margin-bottom: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    transition: transform 0.2s;
 }}
-.kpi-title {{ color: {COLOR_SILVER}; font-size: 13px; font-weight: 600; margin-bottom: 8px; }}
-.kpi-value {{ font-size: 32px; font-weight: 700; color: {COLOR_GOLD}; }}
-.kpi-sub {{ color: rgba(255,255,255,0.5); font-size: 11px; }}
+.kpi-card:hover {{
+    transform: translateY(-2px);
+    border-color: rgba(255,215,0,0.4);
+}}
+.kpi-title {{ 
+    color: {COLOR_SILVER}; 
+    font-size: 13px; 
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px; 
+}}
+.kpi-value {{ 
+    font-size: 32px; 
+    font-weight: 700; 
+    color: {COLOR_GOLD}; 
+    margin-bottom: 4px;
+}}
+.kpi-sub {{ 
+    color: rgba(255,255,255,0.5); 
+    font-size: 11px; 
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -140,14 +160,15 @@ st.sidebar.subheader("📥 Data Source")
 
 data_source = st.sidebar.radio(
     "Choose data source:",
-    ["Upload CSV", "Kaggle API", "Local Directory"]
+    ["Upload CSV", "Kaggle API", "Local Directory"],
+    help="Load data from Kaggle competition, upload files, or use local directory"
 )
 
 # ---------------------
-# 📤 Upload CSV Option (Premier choix - plus simple)
+# 📤 Upload CSV Option (First - Simplest)
 # ---------------------
 if data_source == "Upload CSV":
-    st.sidebar.markdown("#### Upload Your Data")
+    st.sidebar.markdown("#### 📤 Upload Files")
     uploaded_files = st.sidebar.file_uploader(
         "Upload CSV files",
         type=['csv'],
@@ -155,7 +176,7 @@ if data_source == "Upload CSV":
         help="Upload one or more CSV files from the NFL dataset"
     )
     
-    if uploaded_files and st.sidebar.button("🚀 Load Files", type="primary"):
+    if uploaded_files and st.sidebar.button("🚀 Load Uploaded Files", type="primary"):
         with st.spinner("📂 Loading files..."):
             dfs = []
             for file in uploaded_files:
@@ -164,20 +185,23 @@ if data_source == "Upload CSV":
                     dfs.append(df)
                     st.sidebar.success(f"✓ {file.name}: {len(df):,} rows")
                 except Exception as e:
-                    st.sidebar.error(f"⚠️ {file.name}: {str(e)}")
+                    st.sidebar.error(f"⚠️ Error with {file.name}: {str(e)}")
             
             if dfs:
                 st.session_state.full_df = pd.concat(dfs, ignore_index=True)
                 st.session_state.data_loaded = True
-                st.sidebar.success(f"✅ {len(st.session_state.full_df):,} rows loaded!")
+                st.sidebar.success(f"✅ Total: {len(st.session_state.full_df):,} rows!")
                 st.rerun()
+            else:
+                st.sidebar.error("❌ No files could be loaded")
 
 # ---------------------
 # 🔐 Kaggle API Option
 # ---------------------
 elif data_source == "Kaggle API":
-    st.sidebar.markdown("#### Kaggle Credentials")
+    st.sidebar.markdown("#### 🔐 Kaggle Credentials")
     
+    # Try secrets first, then manual input
     try:
         default_username = st.secrets.get("KAGGLE_USERNAME", "")
         default_key = st.secrets.get("KAGGLE_KEY", "")
@@ -185,53 +209,99 @@ elif data_source == "Kaggle API":
         default_username = ""
         default_key = ""
     
-    kaggle_username = st.sidebar.text_input("Username", value=default_username)
-    kaggle_key = st.sidebar.text_input("API Key", type="password", value=default_key)
-    competition_name = st.sidebar.text_input("Competition", value="nfl-big-data-bowl-2025")
+    kaggle_username = st.sidebar.text_input(
+        "Username", 
+        value=default_username,
+        help="Your Kaggle username"
+    )
+    kaggle_key = st.sidebar.text_input(
+        "API Key", 
+        type="password",
+        value=default_key,
+        help="Your Kaggle API key"
+    )
     
-    if st.sidebar.button("🚀 Load from Kaggle", type="primary"):
+    competition_name = st.sidebar.text_input(
+        "Competition Name",
+        value="nfl-big-data-bowl-2026-analytics",
+        help="Kaggle competition slug"
+    )
+    
+    if st.sidebar.button("🚀 Load Data from Kaggle", type="primary"):
         if kaggle_username and kaggle_key:
             try:
-                st.session_state.full_df = load_data_from_kaggle(
-                    username=kaggle_username,
-                    key=kaggle_key,
-                    competition=competition_name
-                )
+                with st.spinner("🏈 Downloading from Kaggle..."):
+                    st.session_state.full_df = load_data_from_kaggle(
+                        username=kaggle_username,
+                        key=kaggle_key,
+                        competition=competition_name
+                    )
                 st.session_state.data_loaded = True
+                st.sidebar.success("✅ Data loaded successfully!")
                 st.rerun()
             except Exception as e:
-                st.error(f"❌ Kaggle Error: {str(e)}")
+                st.sidebar.error(f"❌ Kaggle Error:")
+                st.error(f"**Error details:** {str(e)}")
+                st.info("**Tips:**")
+                st.info("- Check if you've accepted the competition rules")
+                st.info("- Verify your credentials are correct")
+                st.info("- Make sure the competition name is exact")
+                st.session_state.data_loaded = False
         else:
-            st.sidebar.warning("⚠️ Enter credentials")
+            st.sidebar.warning("⚠️ Please enter both username and API key")
 
 # ---------------------
 # 📂 Local Directory Option
 # ---------------------
 else:
-    st.sidebar.markdown("#### Local Data Path")
-    data_dir = st.sidebar.text_input("Directory Path", value="./data")
+    st.sidebar.markdown("#### 📂 Local Path")
+    data_dir = st.sidebar.text_input(
+        "Data Directory Path",
+        value="./data",
+        help="Path to directory containing CSV files"
+    )
     
-    if st.sidebar.button("🚀 Load from Local", type="primary"):
+    if st.sidebar.button("🚀 Load from Local Directory", type="primary"):
         try:
-            st.session_state.full_df = load_local_data(data_dir)
+            with st.spinner(f"📂 Loading from {data_dir}..."):
+                st.session_state.full_df = load_local_data(data_dir)
             st.session_state.data_loaded = True
+            st.sidebar.success("✅ Data loaded!")
             st.rerun()
         except Exception as e:
-            st.error(f"❌ Error: {str(e)}")
+            st.sidebar.error(f"❌ Error:")
+            st.error(f"**Error details:** {str(e)}")
+            st.session_state.data_loaded = False
 
 # ---------------------
-# 📈 Visualization Controls
+# 📈 Visualization Controls (only show if data loaded)
 # ---------------------
 if st.session_state.data_loaded:
     st.sidebar.markdown("---")
-    st.sidebar.subheader("📊 Settings")
+    st.sidebar.subheader("📊 Visualization Settings")
     
-    chart_type = st.sidebar.selectbox("Chart Type", ["Bar", "Line", "Area", "Scatter"])
-    show_top_n = st.sidebar.slider("Top N KPIs", 5, 20, 12)
-    show_data_info = st.sidebar.checkbox("Show Data Info", value=True)
+    chart_type = st.sidebar.selectbox(
+        "Chart Type",
+        ["Bar", "Line", "Area", "Scatter"],
+        help="Select chart type for KPI visualization"
+    )
+    
+    show_top_n = st.sidebar.slider(
+        "Show Top N KPIs",
+        min_value=5,
+        max_value=20,
+        value=12,
+        help="Number of top KPIs to display"
+    )
+    
+    show_data_info = st.sidebar.checkbox(
+        "Show Data Information",
+        value=True,
+        help="Display dataset statistics"
+    )
 
 # ---------------------
-# 🎯 Main Dashboard
+# 🎯 Main Dashboard Content
 # ---------------------
 if st.session_state.data_loaded and not st.session_state.full_df.empty:
     df = st.session_state.full_df
@@ -239,102 +309,180 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
     # Data Summary
     if show_data_info:
         st.markdown("## 📋 Dataset Overview")
-        summary = get_data_summary(df)
         
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Rows", f"{summary['Total Rows']:,}")
-        col2.metric("Columns", f"{summary['Total Columns']:,}")
-        col3.metric("Memory", f"{summary['Memory Usage (MB)']:.1f} MB")
-        col4.metric("Missing", f"{summary['Missing %']:.1f}%")
-        
-        with st.expander("📊 Available Columns"):
-            available = detect_available_columns(df)
-            if available:
-                for cat, cols in available.items():
-                    st.markdown(f"**{cat}:** {', '.join(cols)}")
-            else:
-                st.write(df.columns.tolist())
+        try:
+            summary = get_data_summary(df)
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Rows", f"{summary['Total Rows']:,}")
+            with col2:
+                st.metric("Total Columns", f"{summary['Total Columns']:,}")
+            with col3:
+                st.metric("Memory Usage", f"{summary['Memory Usage (MB)']:.1f} MB")
+            with col4:
+                st.metric("Missing Values", f"{summary['Missing %']:.1f}%")
+            
+            with st.expander("📊 Available Data Columns"):
+                available_cols = detect_available_columns(df)
+                if available_cols:
+                    for category, cols in available_cols.items():
+                        st.markdown(f"**{category}:** {', '.join(cols)}")
+                else:
+                    st.write("**All columns:**", df.columns.tolist())
+        except Exception as e:
+            st.warning(f"⚠️ Could not generate summary: {str(e)}")
         
         st.markdown("---")
     
-    # KPIs
-    with st.spinner("🧮 Computing KPIs..."):
-        kpis = compute_all_kpis(df)
+    # Compute KPIs
+    try:
+        with st.spinner("🧮 Computing KPIs..."):
+            kpis = compute_all_kpis(df)
+    except Exception as e:
+        st.error(f"❌ Error computing KPIs: {str(e)}")
+        kpis = {}
     
-    if kpis:
+    if not kpis:
+        st.warning("⚠️ No KPIs could be computed. Check your data columns.")
+        st.info("**Available columns in your data:**")
+        st.write(df.columns.tolist())
+    else:
+        # KPI Cards
         st.markdown("## 📊 Key Performance Indicators")
         
-        sorted_kpis = dict(sorted(kpis.items(), 
-                                 key=lambda x: abs(x[1]) if not np.isnan(x[1]) else 0, 
-                                 reverse=True)[:show_top_n])
-        
-        # Display KPIs in cards
-        kpi_items = list(sorted_kpis.items())
-        for i in range(0, len(kpi_items), 4):
-            cols = st.columns(4)
-            for j, (name, value) in enumerate(kpi_items[i:i+4]):
-                with cols[j]:
-                    display = f"{value:.2f}" if not np.isnan(value) else "N/A"
-                    st.markdown(f"""
-                    <div class="kpi-card">
-                        <div class="kpi-title">{name}</div>
-                        <div class="kpi-value">{display}</div>
-                        <div class="kpi-sub">Value</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+        try:
+            sorted_kpis = dict(sorted(
+                kpis.items(), 
+                key=lambda x: abs(x[1]) if not np.isnan(x[1]) else 0, 
+                reverse=True
+            )[:show_top_n])
+            
+            cols_per_row = 4
+            kpi_items = list(sorted_kpis.items())
+            
+            for i in range(0, len(kpi_items), cols_per_row):
+                cols = st.columns(cols_per_row)
+                for j, (kpi_name, kpi_value) in enumerate(kpi_items[i:i+cols_per_row]):
+                    with cols[j]:
+                        display_value = f"{kpi_value:.2f}" if not np.isnan(kpi_value) else "N/A"
+                        st.markdown(f"""
+                        <div class="kpi-card">
+                            <div class="kpi-title">{kpi_name}</div>
+                            <div class="kpi-value">{display_value}</div>
+                            <div class="kpi-sub">Computed Value</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"❌ Error displaying KPIs: {str(e)}")
         
         st.markdown("---")
         
-        # Chart
+        # KPI Chart
         st.markdown("## 📈 KPI Visualization")
-        df_kpi = pd.DataFrame([{"KPI": k, "Value": v} 
-                               for k, v in sorted_kpis.items() 
-                               if not np.isnan(v)])
         
-        if not df_kpi.empty:
-            if chart_type == "Bar":
-                fig = px.bar(df_kpi, x="KPI", y="Value", color="Value", template="plotly_dark")
-            elif chart_type == "Line":
-                fig = px.line(df_kpi, x="KPI", y="Value", markers=True, template="plotly_dark")
-            elif chart_type == "Area":
-                fig = px.area(df_kpi, x="KPI", y="Value", template="plotly_dark")
-            else:
-                fig = px.scatter(df_kpi, x="KPI", y="Value", size="Value", template="plotly_dark")
+        try:
+            df_kpi = pd.DataFrame([
+                {"KPI": k, "Value": v} 
+                for k, v in sorted_kpis.items() 
+                if not np.isnan(v)
+            ])
             
-            fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, 
-                            font_color=TEXT_COLOR, height=500)
-            st.plotly_chart(fig, use_container_width=True)
+            if not df_kpi.empty:
+                if chart_type == "Bar":
+                    fig = px.bar(df_kpi, x="KPI", y="Value", color="Value", 
+                               color_continuous_scale="Viridis", template="plotly_dark",
+                               title="KPI Overview")
+                elif chart_type == "Line":
+                    fig = px.line(df_kpi, x="KPI", y="Value", markers=True, 
+                                template="plotly_dark", title="KPI Trends")
+                elif chart_type == "Area":
+                    fig = px.area(df_kpi, x="KPI", y="Value", 
+                                template="plotly_dark", title="KPI Distribution")
+                else:  # Scatter
+                    fig = px.scatter(df_kpi, x="KPI", y="Value", size="Value", color="Value", 
+                                   color_continuous_scale="Plasma", template="plotly_dark",
+                                   title="KPI Analysis")
+                
+                fig.update_layout(
+                    paper_bgcolor=COLOR_BG,
+                    plot_bgcolor=COLOR_PANEL,
+                    font_color=TEXT_COLOR,
+                    height=500,
+                    xaxis_title="Metric",
+                    yaxis_title="Value"
+                )
+                
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No data available for visualization")
+        except Exception as e:
+            st.error(f"❌ Error creating chart: {str(e)}")
         
         # Data Preview
         st.markdown("---")
         st.markdown("## 📋 Data Explorer")
         
-        with st.expander("🔍 Sample Data"):
-            st.dataframe(df.head(100), use_container_width=True, height=400)
+        try:
+            with st.expander("🔍 View Sample Data (First 100 Rows)"):
+                st.dataframe(df.head(100), use_container_width=True, height=400)
+        except Exception as e:
+            st.error(f"❌ Error displaying data: {str(e)}")
         
-        with st.expander("📊 Statistics"):
-            st.dataframe(get_column_info(df), use_container_width=True)
-    else:
-        st.warning("⚠️ No KPIs computed. Check your data columns.")
+        try:
+            with st.expander("📊 Column Statistics"):
+                col_info = get_column_info(df)
+                st.dataframe(col_info, use_container_width=True, height=400)
+        except Exception as e:
+            st.error(f"❌ Error displaying statistics: {str(e)}")
 
 else:
-    # Welcome
-    st.info("👈 **Get Started:** Load your NFL data from the sidebar")
+    # Welcome Screen
+    st.info("👈 **Get Started:** Use the sidebar to load your NFL data")
     
     st.markdown("""
-    ### 🏈 Welcome to NFL Big Data Bowl 2026
+    ### 🏈 Welcome to NFL Big Data Bowl 2026 Dashboard
     
-    #### 📥 Quick Start:
+    #### 📥 How to Load Data:
     
-    1. **Upload CSV** (Easiest) - Upload your CSV files directly
-    2. **Kaggle API** - Connect to Kaggle competition
-    3. **Local Directory** - Load from a folder path
+    **Option 1: Upload CSV** (Recommended - Easiest)
+    - Click "Upload CSV" in the sidebar
+    - Select your CSV files
+    - Click "Load Uploaded Files"
+    
+    **Option 2: Kaggle API**
+    - Enter your Kaggle username and API key
+    - Competition name: `nfl-big-data-bowl-2026-analytics`
+    - Click "Load Data from Kaggle"
+    
+    **Option 3: Local Directory**
+    - Enter the path to your data folder
+    - Click "Load from Local Directory"
     
     #### 📊 Features:
-    - 14+ KPIs computed automatically
-    - Interactive charts
-    - Data exploration tools
+    - **14+ KPIs** computed automatically
+    - **Interactive visualizations** (Bar, Line, Area, Scatter)
+    - **Data exploration** tools
+    - **Column statistics** and analysis
+    
+    #### 🔍 Debug Mode:
+    Check the sidebar for import status and diagnostics.
     """)
+    
+    # Show sample data structure
+    with st.expander("📋 Expected Data Structure"):
+        st.markdown("""
+        Your CSV files should contain NFL tracking data with columns like:
+        - `x`, `y` - Player positions
+        - `s`, `a` - Speed and acceleration
+        - `gameId`, `playId`, `nflId` - Identifiers
+        - `yards_gained`, `completion_probability` - Performance metrics
+        
+        The dashboard will automatically detect available columns and compute relevant KPIs.
+        """)
 
+# Footer
 st.sidebar.markdown("---")
-st.sidebar.caption("NFL Big Data Bowl 2026 v1.0")
+st.sidebar.markdown("**NFL Big Data Bowl 2026**")
+st.sidebar.caption("v1.0 - Analytics Dashboard")
+st.sidebar.caption("Debug mode enabled")
