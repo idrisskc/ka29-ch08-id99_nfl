@@ -14,15 +14,15 @@ from utils import load_data, compute_all_kpis_and_aggregate, download_from_kaggl
 # ---------------------
 # 🎨 NFL Color Palette
 # ---------------------
-COLOR_BG = "#0B0C10"
-COLOR_PANEL = "#1B263B"
-COLOR_ACCENT = "#C1121F"
-COLOR_GOLD = "#FFD700"
-COLOR_SILVER = "#A9A9A9"
+COLOR_BG = "#0B0C10"        # deep black
+COLOR_PANEL = "#1B263B"     # navy
+COLOR_ACCENT = "#C1121F"    # red
+COLOR_GOLD = "#FFD700"      # gold
+COLOR_SILVER = "#A9A9A9"    # silver
 TEXT_COLOR = "#E6EEF8"
 
 # ---------------------
-# ⚙️ Streamlit Config
+# ⚙️ Page Configuration
 # ---------------------
 st.set_page_config(page_title="NFL Big Data Bowl 2026", layout="wide", page_icon="🏈")
 
@@ -32,27 +32,57 @@ st.markdown(f"""
     background-color: {COLOR_BG};
     color: {TEXT_COLOR};
 }}
+/* Sidebar */
 [data-testid="stSidebar"] > div:first-child {{
     background: linear-gradient(180deg, {COLOR_PANEL}, #0b0c10);
     border-right: 1px solid rgba(255,255,255,0.1);
     border-radius: 12px;
     padding: 1rem;
 }}
+/* KPI Card */
 .kpi-card {{
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.15);
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.12);
     border-radius: 14px;
     padding: 16px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
 }}
 .kpi-title {{ color: {COLOR_SILVER}; font-size:13px; margin-bottom:6px; }}
 .kpi-value {{ font-size:28px; font-weight:700; color:{COLOR_GOLD}; }}
 .kpi-sub {{ color: rgba(255,255,255,0.6); font-size:12px; }}
+.kpi-badge-up {{
+    background: rgba(255,215,0,0.1); color:{COLOR_GOLD};
+    padding:4px 8px; border-radius:10px; border:1px solid rgba(255,215,0,0.2);
+    font-weight:600; font-size:12px;
+}}
+.kpi-badge-down {{
+    background: rgba(193,18,31,0.12); color:{COLOR_ACCENT};
+    padding:4px 8px; border-radius:10px; border:1px solid rgba(193,18,31,0.2);
+    font-weight:600; font-size:12px;
+}}
 </style>
 """, unsafe_allow_html=True)
 
 st.title("🏈 NFL Big Data Bowl 2026 - Analytics Dashboard")
-st.markdown("_Analyze and visualize player tracking data from the official Kaggle competition._")
+st.markdown("_Explore, visualize, and understand NFL tracking data from the 2026 Big Data Bowl._")
+
+# ---------------------
+# Sidebar Filters
+# ---------------------
+st.sidebar.header("⚙️ Settings")
+
+today = datetime.today().date()
+start_default = today.replace(year=today.year - 1)
+start_date = st.sidebar.date_input("Start date", start_default)
+end_date = st.sidebar.date_input("End date", today)
+timeframe = st.sidebar.selectbox("Select time frame", ["Daily", "Weekly", "Monthly"])
+chart_type = st.sidebar.selectbox("Select a chart type", ["Bar", "Line", "Area"])
+st.sidebar.markdown("---")
+
+# ---------------------
+# Kaggle data management
+# ---------------------
 
 # ---------------------
 # Sidebar
