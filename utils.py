@@ -17,15 +17,19 @@ def load_data(username=None, key=None, competition="nfl-big-data-bowl-2026-analy
     try:
         from kaggle.api.kaggle_api_extended import KaggleApi
     except ImportError:
+        import streamlit as st
         st.error("❌ Module kaggle non installé. Faites `pip install kaggle`")
         st.stop()
+
+    import os
+    import pandas as pd
+    import streamlit as st
+    from io import BytesIO
 
     # Configuration de l'API Kaggle
     if username and key:
         os.environ['KAGGLE_USERNAME'] = username
         os.environ['KAGGLE_KEY'] = key
-    else:
-        st.warning("⚠️ Aucun identifiant Kaggle fourni. Accès possible seulement si vous avez déjà authentifié Kaggle.")
     
     api = KaggleApi()
     api.authenticate()
@@ -33,26 +37,24 @@ def load_data(username=None, key=None, competition="nfl-big-data-bowl-2026-analy
     # Liste des fichiers CSV du dataset
     files = api.competition_list_files(competition)
     csv_files = [f.name for f in files if f.name.endswith(".csv")]
-    
+
     if not csv_files:
         st.error("❌ Aucun fichier CSV trouvé dans le dataset Kaggle.")
         st.stop()
 
     st.info(f"📄 {len(csv_files)} fichiers CSV trouvés dans le dataset {competition}")
 
-    # Chargement des CSV en mémoire (DataFrame)
     dfs = []
     for file_name in csv_files:
         st.info(f"📥 Chargement de {file_name} depuis Kaggle...")
         file_content = api.competition_download_file(competition, file_name, path=None)
-        # Pandas peut lire à partir d'un buffer
-        from io import BytesIO
         df = pd.read_csv(BytesIO(file_content), low_memory=False)
         dfs.append(df)
 
     full_df = pd.concat(dfs, ignore_index=True)
     st.success(f"✅ {len(csv_files)} fichiers chargés avec succès ({len(full_df):,} lignes totales).")
     return full_df
+
 
 # =======================================================
 # 📈 Calcul des KPIs NFL
