@@ -1,115 +1,63 @@
 # =======================================================
-# utils.py - Robust Kaggle + Data Utils for NFL Dashboard
+# utils.py - Kaggle Data Access & NFL Dashboard KPIs
 # =======================================================
 import os
 import pandas as pd
 import numpy as np
-import zipfile
-import subprocess
-import shutil
 import streamlit as st
 
 # =======================================================
-# 📦 Téléchargement et extraction depuis Kaggle
+# 📦 Lecture directe des CSV depuis Kaggle
 # =======================================================
-def download_from_kaggle(username=None, key=None, base_dir="./data"):
+def load_data(username=None, key=None, competition="nfl-big-data-bowl-2026-analytics"):
     """
-    Télécharge et extrait le dataset NFL Big Data Bowl depuis Kaggle.
-    Si le répertoire data existe déjà avec des fichiers CSV, il est réutilisé.
+    Charge directement les fichiers CSV du dataset Kaggle pour visualisation.
+    Ne télécharge pas sur le disque si non nécessaire.
     """
-    os.makedirs(base_dir, exist_ok=True)
+    try:
+        from kaggle.api.kaggle_api_extended import KaggleApi
+    except ImportError:
+        st.error("❌ Module kaggle non installé. Faites `pip install kaggle`")
+        st.stop()
 
-    # Vérifie s’il existe déjà des CSV dans ./data
-    existing_csvs = [f for f in os.listdir(base_dir) if f.endswith(".csv")]
-    if existing_csvs:
-        st.info(f"✅ {len(existing_csvs)} fichiers CSV déjà présents dans {base_dir}. Téléchargement ignoré.")
-        return
-
+    # Configuration de l'API Kaggle
     if username and key:
-        # Configuration des credentials Kaggle
-        kaggle_json_path = os.path.expanduser("~/.kaggle")
-        os.makedirs(kaggle_json_path, exist_ok=True)
-        kaggle_json_file = os.path.join(kaggle_json_path, "kaggle.json")
-        with open(kaggle_json_file, "w") as f:
-            f.write(f'{{"username":"{username}","key":"{key}"}}')
-        os.chmod(kaggle_json_file, 0o600)
+        os.environ['KAGGLE_USERNAME'] = username
+        os.environ['KAGGLE_KEY'] = key
     else:
-        st.warning("⚠️ Aucun identifiant Kaggle fourni. Téléchargement ignoré.")
-        return
+        st.warning("⚠️ Aucun identifiant Kaggle fourni. Accès possible seulement si vous avez déjà authentifié Kaggle.")
+    
+    api = KaggleApi()
+    api.authenticate()
 
-    # Vérifie la disponibilité du module kaggle
-    try:
-        subprocess.run(["kaggle", "--version"], check=True, capture_output=True)
-    except Exception:
-        st.error("❌ Le module Kaggle n'est pas disponible sur ce serveur.")
-        st.stop()
-
-    # Téléchargement du dataset
-    try:
-        st.info("📥 Téléchargement du dataset NFL depuis Kaggle...")
-        subprocess.run(
-            ["kaggle", "competitions", "download", "-c", 
-             "nfl-big-data-bowl-2026-analytics", "-p", base_dir, "--force"],
-            check=True
-        )
-    except subprocess.CalledProcessError as e:
-        st.error(f"❌ Erreur lors du téléchargement Kaggle : {e}")
-        st.stop()
-
-    # Extraction du ZIP
-    for file in os.listdir(base_dir):
-        if file.endswith(".zip"):
-            zip_path = os.path.join(base_dir, file)
-            st.info(f"📦 Extraction de {zip_path} ...")
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                zip_ref.extractall(base_dir)
-            st.success(f"✅ Fichiers extraits dans {base_dir}")
-            os.remove(zip_path)
-
-
-# =======================================================
-# 📊 Chargement des données (avec fallback automatique)
-# =======================================================
-def load_data(use_kaggle=False, username=None, key=None, base_dir="./data"):
-    """
-    Charge les données NFL soit depuis Kaggle, soit localement.
-    Crée le répertoire ./data s'il n'existe pas.
-    """
-    os.makedirs(base_dir, exist_ok=True)
-
-    # Mode Kaggle
-    if use_kaggle:
-        download_from_kaggle(username=username, key=key, base_dir=base_dir)
-
-    # Vérifie que des CSV existent
-    csv_files = [os.path.join(base_dir, f) for f in os.listdir(base_dir) if f.endswith(".csv")]
+    # Liste des fichiers CSV du dataset
+    files = api.competition_list_files(competition)
+    csv_files = [f.name for f in files if f.name.endswith(".csv")]
+    
     if not csv_files:
-        st.error("❌ Aucun fichier CSV trouvé dans ./data/. Téléchargez-les manuellement ou activez use_kaggle=True.")
+        st.error("❌ Aucun fichier CSV trouvé dans le dataset Kaggle.")
         st.stop()
 
-    # Chargement des CSV
+    st.info(f"📄 {len(csv_files)} fichiers CSV trouvés dans le dataset {competition}")
+
+    # Chargement des CSV en mémoire (DataFrame)
     dfs = []
-    for csv in csv_files:
-        try:
-            df = pd.read_csv(csv, low_memory=False)
-            dfs.append(df)
-        except Exception as e:
-            st.warning(f"⚠️ Impossible de lire {csv}: {e}")
+    for file_name in csv_files:
+        st.info(f"📥 Chargement de {file_name} depuis Kaggle...")
+        file_content = api.competition_download_file(competition, file_name, path=None)
+        # Pandas peut lire à partir d'un buffer
+        from io import BytesIO
+        df = pd.read_csv(BytesIO(file_content), low_memory=False)
+        dfs.append(df)
 
-    if not dfs:
-        st.error("❌ Aucun DataFrame valide n'a pu être chargé.")
-        st.stop()
-
-    # Concaténation
     full_df = pd.concat(dfs, ignore_index=True)
-    st.success(f"📄 {len(csv_files)} fichiers chargés avec succès ({len(full_df):,} lignes totales).")
+    st.success(f"✅ {len(csv_files)} fichiers chargés avec succès ({len(full_df):,} lignes totales).")
     return full_df
-
 
 # =======================================================
 # 📈 Calcul des KPIs NFL
 # =======================================================
-def compute_all_kpis_and_aggregate(full_df, df_input=None, df_out=None, df_supp=None, tr_sample=None, prethrow=None):
+def compute_all_kpis_and_aggregate(full_df):
     """Calcule les indicateurs de performance (KPIs) à partir des données NFL."""
     def safe_mean(df, col):
         return float(df[col].mean()) if col in df.columns else np.nan
@@ -131,7 +79,7 @@ def compute_all_kpis_and_aggregate(full_df, df_input=None, df_out=None, df_supp=
         'AEF (Acceleration)': safe_mean(full_df, 'acceleration')
     }
 
-    # ✅ Données simulées KPI passes
+    # Données simulées KPI passes
     df_pass_kpis = pd.DataFrame({
         'cli_final': np.random.rand(50),
         'max_dai': np.random.rand(50),
