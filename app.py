@@ -1,5 +1,5 @@
 # =======================================================
-# app.py - NFL Big Data Bowl 2026 Dashboard (WITH DEBUG)
+# app.py - NFL Big Data Bowl 2026 Dashboard (FIXED)
 # =======================================================
 
 import sys
@@ -270,15 +270,22 @@ if data_source == "Kaggle API":
         if kaggle_username and kaggle_key:
             try:
                 with st.spinner("🏈 Downloading NFL data from Kaggle... This may take a few minutes..."):
-                    st.info("📥 Connecting to Kaggle API...")
-                    st.session_state.full_df = load_data_from_kaggle(
+                    df_result = load_data_from_kaggle(
                         username=kaggle_username,
                         key=kaggle_key,
                         competition=competition_name
                     )
-                    st.session_state.data_loaded = True
-                    st.success(f"✅ Successfully loaded {len(st.session_state.full_df):,} rows!")
-                st.rerun()
+                    
+                    # Vérifier que les données ont été chargées
+                    if df_result is not None and not df_result.empty:
+                        st.session_state.full_df = df_result
+                        st.session_state.data_loaded = True
+                        st.success(f"✅ Successfully loaded {len(st.session_state.full_df):,} rows!")
+                        st.info("📊 Scroll down to see the visualizations!")
+                    else:
+                        st.error("❌ No data was loaded from Kaggle")
+                        st.session_state.data_loaded = False
+                        
             except Exception as e:
                 st.error(f"❌ Kaggle API Error: {str(e)}")
                 with st.expander("🔍 Error Details & Solutions"):
@@ -326,7 +333,6 @@ elif data_source == "Upload CSV":
                     st.session_state.full_df = pd.concat(dfs, ignore_index=True)
                     st.session_state.data_loaded = True
                     st.sidebar.success(f"✅ Total: {len(st.session_state.full_df):,} rows!")
-                    st.rerun()
                 else:
                     st.sidebar.error("❌ No files could be loaded")
         else:
@@ -345,10 +351,14 @@ else:
     if st.sidebar.button("🚀 Load from Local Directory", type="primary"):
         try:
             with st.spinner(f"📂 Loading CSV files from {data_dir}..."):
-                st.session_state.full_df = load_local_data(data_dir)
-                st.session_state.data_loaded = True
-                st.success(f"✅ Loaded {len(st.session_state.full_df):,} rows")
-            st.rerun()
+                df_result = load_local_data(data_dir)
+                if df_result is not None and not df_result.empty:
+                    st.session_state.full_df = df_result
+                    st.session_state.data_loaded = True
+                    st.success(f"✅ Loaded {len(st.session_state.full_df):,} rows")
+                else:
+                    st.error("❌ No data loaded")
+                    st.session_state.data_loaded = False
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
             with st.expander("🔍 Error Details"):
@@ -358,7 +368,7 @@ else:
 # ---------------------
 # 📈 Visualization Controls (only show if data loaded)
 # ---------------------
-if st.session_state.data_loaded:
+if st.session_state.data_loaded and not st.session_state.full_df.empty:
     st.sidebar.markdown("---")
     st.sidebar.subheader("📊 Visualization Settings")
     
@@ -403,6 +413,8 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                 st.metric("Missing Values", f"{summary['Missing %']:.1f}%")
         except Exception as e:
             st.warning(f"⚠️ Could not compute summary: {str(e)}")
+            if debug_mode:
+                st.code(str(e), language="python")
         
         with st.expander("📊 Available Data Columns"):
             try:
@@ -419,6 +431,8 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                         st.write(f"... and {len(col_list) - 20} more")
             except Exception as e:
                 st.error(f"Error: {str(e)}")
+                if debug_mode:
+                    st.code(str(e), language="python")
         
         st.markdown("---")
     
@@ -440,37 +454,42 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
         # KPI Cards
         st.markdown("## 📊 Key Performance Indicators")
         
-        sorted_kpis = dict(sorted(kpis.items(), key=lambda x: abs(x[1]) if not np.isnan(x[1]) else 0, reverse=True)[:show_top_n])
-        
-        cols_per_row = 4
-        kpi_items = list(sorted_kpis.items())
-        
-        for i in range(0, len(kpi_items), cols_per_row):
-            cols = st.columns(cols_per_row)
-            for j, (kpi_name, kpi_value) in enumerate(kpi_items[i:i+cols_per_row]):
-                with cols[j]:
-                    display_value = f"{kpi_value:.2f}" if not np.isnan(kpi_value) else "N/A"
-                    st.markdown(f"""
-                    <div class="kpi-card">
-                        <div class="kpi-title">{kpi_name}</div>
-                        <div class="kpi-value">{display_value}</div>
-                        <div class="kpi-sub">Computed Value</div>
-                    </div>
-                    """, unsafe_allow_html=True)
+        try:
+            sorted_kpis = dict(sorted(kpis.items(), key=lambda x: abs(x[1]) if not np.isnan(x[1]) else 0, reverse=True)[:show_top_n])
+            
+            cols_per_row = 4
+            kpi_items = list(sorted_kpis.items())
+            
+            for i in range(0, len(kpi_items), cols_per_row):
+                cols = st.columns(cols_per_row)
+                for j, (kpi_name, kpi_value) in enumerate(kpi_items[i:i+cols_per_row]):
+                    with cols[j]:
+                        display_value = f"{kpi_value:.2f}" if not np.isnan(kpi_value) else "N/A"
+                        st.markdown(f"""
+                        <div class="kpi-card">
+                            <div class="kpi-title">{kpi_name}</div>
+                            <div class="kpi-value">{display_value}</div>
+                            <div class="kpi-sub">Computed Value</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+        except Exception as e:
+            st.error(f"❌ Error displaying KPIs: {str(e)}")
+            if debug_mode:
+                st.code(str(e), language="python")
         
         st.markdown("---")
         
         # KPI Chart
         st.markdown("## 📈 KPI Visualization")
         
-        df_kpi = pd.DataFrame([
-            {"KPI": k, "Value": v} 
-            for k, v in sorted_kpis.items() 
-            if not np.isnan(v)
-        ])
-        
-        if not df_kpi.empty:
-            try:
+        try:
+            df_kpi = pd.DataFrame([
+                {"KPI": k, "Value": v} 
+                for k, v in sorted_kpis.items() 
+                if not np.isnan(v)
+            ])
+            
+            if not df_kpi.empty:
                 if chart_type == "Bar":
                     fig = px.bar(df_kpi, x="KPI", y="Value", color="Value", 
                                color_continuous_scale="Viridis", template="plotly_dark")
@@ -490,8 +509,12 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                 )
                 
                 st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.error(f"❌ Chart error: {str(e)}")
+            else:
+                st.info("No data available for visualization")
+        except Exception as e:
+            st.error(f"❌ Chart error: {str(e)}")
+            if debug_mode:
+                st.code(str(e), language="python")
         
         # Data Preview
         st.markdown("---")
@@ -502,12 +525,17 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                 st.dataframe(df.head(100), use_container_width=True, height=400)
             except Exception as e:
                 st.error(f"Error: {str(e)}")
+                if debug_mode:
+                    st.code(str(e), language="python")
         
         with st.expander("📊 Column Statistics"):
             try:
-                st.dataframe(get_column_info(df), use_container_width=True, height=400)
+                col_info = get_column_info(df)
+                st.dataframe(col_info, use_container_width=True, height=400)
             except Exception as e:
                 st.error(f"Error: {str(e)}")
+                if debug_mode:
+                    st.code(str(e), language="python")
 
 else:
     # Welcome Screen
