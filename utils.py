@@ -75,7 +75,7 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
         st.success(f"✅ Found {len(csv_files)} CSV files")
         
         # OPTIMISATION: Limiter le nombre de fichiers pour éviter les crashes
-        MAX_FILES = 25  # Limite à 10 fichiers pour commencer
+        MAX_FILES = 20  # Limite à 10 fichiers pour commencer
         
         if len(csv_files) > MAX_FILES:
             st.warning(f"⚠️ Found {len(csv_files)} files. Loading only first {MAX_FILES} to prevent memory issues.")
