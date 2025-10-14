@@ -1,5 +1,5 @@
 # =======================================================
-# utils.py - OPTIMIZED for Streamlit Cloud
+# utils.py - OPTIMIZED with Strategic KPIs
 # =======================================================
 import os
 import pandas as pd
@@ -8,24 +8,21 @@ import streamlit as st
 from io import BytesIO
 import zipfile
 import shutil
-import gc  # Garbage collector pour libérer la mémoire
+import gc
+from scipy.stats import entropy
 
 
 # =======================================================
 # 📦 Load Data from Kaggle API (OPTIMIZED)
 # =======================================================
 def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-analytics"):
-    """
-    Load CSV files from Kaggle - OPTIMIZED VERSION
-    Limite le nombre de fichiers et la taille des données
-    """
+    """Load CSV files from Kaggle - OPTIMIZED VERSION"""
     try:
         from kaggle.api.kaggle_api_extended import KaggleApi
     except ImportError:
         st.error("❌ Kaggle module not installed")
         return pd.DataFrame()
     
-    # Configuration API
     os.environ['KAGGLE_USERNAME'] = username
     os.environ['KAGGLE_KEY'] = key
     
@@ -33,22 +30,14 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
         api = KaggleApi()
         api.authenticate()
         
-        # Nettoyage
         if os.path.exists('temp_data'):
             shutil.rmtree('temp_data')
         os.makedirs('temp_data', exist_ok=True)
         
         st.info("📥 Downloading competition files...")
         
-        # Télécharger tous les fichiers
-        api.competition_download_files(
-            competition,
-            path='temp_data',
-            force=True,
-            quiet=False
-        )
+        api.competition_download_files(competition, path='temp_data', force=True, quiet=False)
         
-        # Trouver et extraire le zip principal
         zip_files = [f for f in os.listdir('temp_data') if f.endswith('.zip')]
         
         if not zip_files:
@@ -61,7 +50,6 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
         with zipfile.ZipFile(main_zip, 'r') as zip_ref:
             zip_ref.extractall('temp_data')
         
-        # Trouver tous les CSV
         csv_files = []
         for root, dirs, files in os.walk('temp_data'):
             for file in files:
@@ -74,14 +62,12 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
         
         st.success(f"✅ Found {len(csv_files)} CSV files")
         
-        # OPTIMISATION: Limiter le nombre de fichiers pour éviter les crashes
-        MAX_FILES = 20  # Limite à 10 fichiers pour commencer
+        MAX_FILES = 10
         
         if len(csv_files) > MAX_FILES:
-            st.warning(f"⚠️ Found {len(csv_files)} files. Loading only first {MAX_FILES} to prevent memory issues.")
+            st.warning(f"⚠️ Loading only first {MAX_FILES} files to prevent memory issues.")
             csv_files = csv_files[:MAX_FILES]
         
-        # Charger les fichiers avec SAMPLE pour réduire la mémoire
         dfs = []
         progress_bar = st.progress(0)
         
@@ -91,21 +77,12 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
             try:
                 st.info(f"📥 Loading {file_name}... ({idx+1}/{len(csv_files)})")
                 
-                # Charger avec dtype optimization
-                df = pd.read_csv(
-                    file_path, 
-                    low_memory=False,
-                    # Limite optionnelle: prendre seulement les premières lignes
-                    # nrows=50000  # Décommenter si toujours des problèmes de mémoire
-                )
-                
-                # Optimiser les types de données pour économiser la mémoire
+                df = pd.read_csv(file_path, low_memory=False)
                 df = optimize_dataframe(df)
                 
                 dfs.append(df)
                 st.success(f"✓ {file_name}: {len(df):,} rows, {len(df.columns)} cols")
                 
-                # Libérer la mémoire
                 del df
                 gc.collect()
                 
@@ -118,11 +95,9 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
             st.error("❌ No data loaded")
             return pd.DataFrame()
         
-        # Combiner les dataframes
         st.info("🔄 Combining all data...")
         full_df = pd.concat(dfs, ignore_index=True)
         
-        # Nettoyage final
         del dfs
         gc.collect()
         
@@ -136,7 +111,6 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
     except Exception as e:
         st.error(f"❌ Kaggle Error: {str(e)}")
         
-        # Nettoyage en cas d'erreur
         if os.path.exists('temp_data'):
             shutil.rmtree('temp_data')
         
@@ -149,30 +123,26 @@ def optimize_dataframe(df):
         col_type = df[col].dtype
         
         if col_type == 'object':
-            # Convertir les strings en catégories si peu de valeurs uniques
             num_unique = df[col].nunique()
-            if num_unique / len(df) < 0.5:  # Si moins de 50% de valeurs uniques
+            if num_unique / len(df) < 0.5:
                 df[col] = df[col].astype('category')
         
         elif col_type == 'float64':
-            # Réduire la précision des floats
             df[col] = df[col].astype('float32')
         
         elif col_type == 'int64':
-            # Réduire la taille des ints
             df[col] = df[col].astype('int32')
     
     return df
 
 
 # =======================================================
-# 📈 Compute All KPIs (SIMPLIFIED)
+# 📈 Compute Basic KPIs
 # =======================================================
 def compute_all_kpis(df):
-    """Calculate KPIs - version simplifiée et robuste"""
+    """Calculate basic KPIs"""
     
     def safe_mean(dataframe, column_name):
-        """Calcul sécurisé de la moyenne"""
         try:
             if column_name in dataframe.columns:
                 values = pd.to_numeric(dataframe[column_name], errors='coerce')
@@ -183,7 +153,6 @@ def compute_all_kpis(df):
         return np.nan
     
     def safe_max(dataframe, column_name):
-        """Calcul sécurisé du max"""
         try:
             if column_name in dataframe.columns:
                 values = pd.to_numeric(dataframe[column_name], errors='coerce')
@@ -194,7 +163,6 @@ def compute_all_kpis(df):
         return np.nan
     
     def safe_count_unique(dataframe, column_name):
-        """Compte des valeurs uniques"""
         try:
             if column_name in dataframe.columns:
                 return float(dataframe[column_name].nunique())
@@ -202,93 +170,45 @@ def compute_all_kpis(df):
             pass
         return np.nan
     
-    # KPIs avec fallbacks multiples
     kpis = {}
-    
-    # Liste de tous les noms de colonnes possibles
     cols = df.columns.tolist()
     
-    # Yards
-    for col in ['yards_gained', 'yardsGained', 'yards', 'yardage']:
+    # Basic KPIs
+    for col in ['yards_gained', 'yardsGained', 'yards']:
         if col in cols:
             val = safe_mean(df, col)
             if not np.isnan(val):
-                kpis['PPE (Yards Gained)'] = val
+                kpis['Yards Gained'] = val
                 break
     
-    # Completion
-    for col in ['completion_probability', 'completionProbability']:
-        if col in cols:
-            val = safe_mean(df, col)
-            if not np.isnan(val):
-                kpis['CBR (Completion Prob)'] = val
-                break
-    
-    # Frame
-    for col in ['frame_id', 'frameId', 'frame']:
-        if col in cols:
-            val = safe_mean(df, col)
-            if not np.isnan(val):
-                kpis['FFM (Frame ID)'] = val
-                break
-    
-    # Distance
-    for col in ['dis', 'distance', 'dist']:
-        if col in cols:
-            val = safe_mean(df, col)
-            if not np.isnan(val):
-                kpis['ADY (Distance)'] = val
-                break
-    
-    # Speed
-    for col in ['s', 'speed', 'velocity']:
+    for col in ['s', 'speed']:
         if col in cols:
             val_mean = safe_mean(df, col)
             val_max = safe_max(df, col)
             if not np.isnan(val_mean):
-                kpis['VMC (Speed Avg)'] = val_mean
+                kpis['Speed Avg'] = val_mean
             if not np.isnan(val_max):
-                kpis['SMV (Speed Max)'] = val_max
+                kpis['Speed Max'] = val_max
             break
     
-    # Acceleration
-    for col in ['a', 'acceleration', 'accel']:
+    for col in ['a', 'acceleration']:
         if col in cols:
             val = safe_mean(df, col)
             if not np.isnan(val):
-                kpis['AEF (Acceleration)'] = val
+                kpis['Acceleration'] = val
                 break
     
-    # Direction
-    for col in ['dir', 'direction']:
-        if col in cols:
-            val = safe_mean(df, col)
-            if not np.isnan(val):
-                kpis['DIR (Direction)'] = val
-                break
-    
-    # Orientation
-    for col in ['o', 'orientation']:
-        if col in cols:
-            val = safe_mean(df, col)
-            if not np.isnan(val):
-                kpis['ORI (Orientation)'] = val
-                break
-    
-    # Position X
     if 'x' in cols:
         val = safe_mean(df, 'x')
         if not np.isnan(val):
             kpis['Avg X Position'] = val
     
-    # Position Y
     if 'y' in cols:
         val = safe_mean(df, 'y')
         if not np.isnan(val):
             kpis['Avg Y Position'] = val
     
-    # Unique counts
-    for col in ['nflId', 'playerId', 'player_id']:
+    for col in ['nflId', 'nfl_id']:
         if col in cols:
             val = safe_count_unique(df, col)
             if not np.isnan(val):
@@ -302,17 +222,210 @@ def compute_all_kpis(df):
                 kpis['Unique Plays'] = val
                 break
     
-    for col in ['gameId', 'game_id']:
-        if col in cols:
-            val = safe_count_unique(df, col)
-            if not np.isnan(val):
-                kpis['Unique Games'] = val
-                break
-    
-    # Filtrer les NaN
     kpis = {k: v for k, v in kpis.items() if not np.isnan(v)}
     
     return kpis
+
+
+# =======================================================
+# 🎯 STRATEGIC KPIs
+# =======================================================
+
+def calculate_defensive_pressure_index(df):
+    """KPI 1: Defensive Pressure Index"""
+    try:
+        if 'player_side' not in df.columns:
+            return None
+        
+        defense_df = df[df['player_side'] == 'Defense'].copy()
+        
+        required_cols = ['game_id', 'play_id', 'defenders_in_the_box', 's', 'dropback_distance']
+        if not all(col in defense_df.columns for col in required_cols):
+            return None
+        
+        dpi_data = defense_df.groupby(['game_id', 'play_id']).agg({
+            'defenders_in_the_box': 'first',
+            's': 'mean',
+            'dropback_distance': 'first'
+        }).reset_index()
+        
+        dpi_data['DPI'] = (dpi_data['defenders_in_the_box'] * dpi_data['s']) / (dpi_data['dropback_distance'] + 1)
+        
+        return dpi_data['DPI'].mean()
+    except:
+        return None
+
+
+def calculate_coverage_vulnerability_matrix(df):
+    """KPI 2: Coverage Vulnerability Matrix"""
+    try:
+        required_cols = ['team_coverage_type', 'receiver_alignment', 'yards_gained', 'expected_points']
+        if not all(col in df.columns for col in required_cols):
+            return None
+        
+        cvm_data = df.groupby(['team_coverage_type', 'receiver_alignment']).agg({
+            'yards_gained': 'mean',
+            'expected_points': 'mean'
+        }).reset_index()
+        
+        cvm_data['CVM'] = cvm_data['yards_gained'] / (cvm_data['expected_points'] + 0.1)
+        
+        return cvm_data
+    except:
+        return None
+
+
+def calculate_route_efficiency_score(df):
+    """KPI 3: Route Efficiency Score"""
+    try:
+        if 'player_role' not in df.columns or 'route_of_targeted_receiver' not in df.columns:
+            return None
+        
+        receivers_df = df[df['player_role'] == 'Targeted Receiver'].copy()
+        
+        if len(receivers_df) == 0:
+            return None
+        
+        res_data = receivers_df.groupby('route_of_targeted_receiver').agg({
+            'yards_gained': 'mean',
+            'pass_result': lambda x: (x == 'C').sum() / len(x) if len(x) > 0 else 0
+        }).reset_index()
+        
+        res_data.columns = ['route', 'avg_yards', 'completion_rate']
+        res_data['RES'] = res_data['avg_yards'] * res_data['completion_rate']
+        
+        return res_data
+    except:
+        return None
+
+
+def calculate_win_probability_leverage(df):
+    """KPI 4: Win Probability Leverage"""
+    try:
+        if 'home_team_win_probability_added' not in df.columns:
+            return None
+        
+        wpl_data = df.groupby(['down', 'quarter']).agg({
+            'home_team_win_probability_added': lambda x: abs(x).mean()
+        }).reset_index()
+        
+        wpl_data.columns = ['down', 'quarter', 'WPL']
+        
+        return wpl_data
+    except:
+        return None
+
+
+def calculate_red_zone_efficiency(df):
+    """KPI 5: Red Zone Conversion Efficiency"""
+    try:
+        if 'absolute_yardline_number' not in df.columns:
+            return None
+        
+        rz_df = df[df['absolute_yardline_number'] <= 20].copy()
+        
+        if len(rz_df) == 0:
+            return None
+        
+        rzce = rz_df.groupby('pass_result').size().to_dict()
+        total = sum(rzce.values())
+        
+        completion_rate = rzce.get('C', 0) / total if total > 0 else 0
+        
+        return completion_rate * 100
+    except:
+        return None
+
+
+def calculate_formation_predictability(df):
+    """KPI 6: Formation Predictability Index"""
+    try:
+        if 'offense_formation' not in df.columns or 'pass_result' not in df.columns:
+            return None
+        
+        fpi_data = df.groupby('offense_formation')['pass_result'].apply(
+            lambda x: entropy(x.value_counts(normalize=True)) if len(x) > 1 else 0
+        ).reset_index()
+        
+        fpi_data.columns = ['formation', 'entropy']
+        fpi_data['FPI'] = 1 / (fpi_data['entropy'] + 0.1)
+        
+        return fpi_data
+    except:
+        return None
+
+
+def calculate_spatial_advantage(df):
+    """KPI 7: Spatial Advantage Score"""
+    try:
+        if 'player_role' not in df.columns:
+            return None
+        
+        receivers = df[df['player_role'] == 'Targeted Receiver'][['game_id', 'play_id', 'x', 'y']].copy()
+        defenders = df[df['player_role'] == 'Defensive Coverage'][['game_id', 'play_id', 'x', 'y']].copy()
+        
+        if len(receivers) == 0 or len(defenders) == 0:
+            return None
+        
+        receivers.columns = ['game_id', 'play_id', 'rx', 'ry']
+        
+        merged = receivers.merge(defenders, on=['game_id', 'play_id'], how='left')
+        merged['separation'] = np.sqrt((merged['rx'] - merged['x'])**2 + (merged['ry'] - merged['y'])**2)
+        
+        avg_separation = merged['separation'].mean()
+        
+        return (avg_separation / 53.3) * 100 if not np.isnan(avg_separation) else None
+    except:
+        return None
+
+
+def calculate_all_strategic_kpis(df):
+    """Calculate all strategic KPIs and return as dict"""
+    strategic_kpis = {}
+    
+    # DPI
+    dpi = calculate_defensive_pressure_index(df)
+    if dpi is not None:
+        strategic_kpis['Defensive Pressure Index'] = dpi
+    
+    # Red Zone
+    rzce = calculate_red_zone_efficiency(df)
+    if rzce is not None:
+        strategic_kpis['Red Zone Efficiency %'] = rzce
+    
+    # Spatial Advantage
+    sas = calculate_spatial_advantage(df)
+    if sas is not None:
+        strategic_kpis['Spatial Advantage Score'] = sas
+    
+    return strategic_kpis
+
+
+def get_strategic_kpi_dataframes(df):
+    """Get detailed DataFrames for strategic KPIs visualization"""
+    kpi_dfs = {}
+    
+    # Coverage Vulnerability Matrix
+    cvm = calculate_coverage_vulnerability_matrix(df)
+    if cvm is not None and not cvm.empty:
+        kpi_dfs['CVM'] = cvm
+    
+    # Route Efficiency
+    res = calculate_route_efficiency_score(df)
+    if res is not None and not res.empty:
+        kpi_dfs['RES'] = res
+    
+    # Win Probability Leverage
+    wpl = calculate_win_probability_leverage(df)
+    if wpl is not None and not wpl.empty:
+        kpi_dfs['WPL'] = wpl
+    
+    # Formation Predictability
+    fpi = calculate_formation_predictability(df)
+    if fpi is not None and not fpi.empty:
+        kpi_dfs['FPI'] = fpi
+    
+    return kpi_dfs
 
 
 # =======================================================
@@ -387,9 +500,10 @@ def detect_available_columns(df):
     """Detect standard NFL columns"""
     standard_columns = {
         'Tracking Data': ['x', 'y', 's', 'a', 'dis', 'o', 'dir'],
-        'Identifiers': ['gameId', 'playId', 'nflId', 'frameId'],
-        'Performance Metrics': ['yards_gained', 'completion_probability'],
-        'Player Info': ['displayName', 'jerseyNumber', 'position']
+        'Identifiers': ['gameId', 'playId', 'nflId', 'frameId', 'game_id', 'play_id', 'nfl_id', 'frame_id'],
+        'Performance Metrics': ['yards_gained', 'expected_points', 'expected_points_added'],
+        'Player Info': ['player_name', 'player_position', 'player_side', 'player_role'],
+        'Strategic': ['team_coverage_type', 'offense_formation', 'receiver_alignment']
     }
     
     available = {}
