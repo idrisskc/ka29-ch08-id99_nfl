@@ -1,5 +1,5 @@
 # =======================================================
-# utils.py - OPTIMIZED with Strategic KPIs
+# utils.py - OPTIMIZED (NO SCIPY VERSION)
 # =======================================================
 import os
 import pandas as pd
@@ -9,7 +9,6 @@ from io import BytesIO
 import zipfile
 import shutil
 import gc
-from scipy.stats import entropy
 
 
 # =======================================================
@@ -134,6 +133,16 @@ def optimize_dataframe(df):
             df[col] = df[col].astype('int32')
     
     return df
+
+
+# =======================================================
+# Custom Entropy Function (replaces scipy)
+# =======================================================
+def calculate_entropy(values):
+    """Calculate Shannon entropy without scipy"""
+    value_counts = pd.Series(values).value_counts(normalize=True)
+    entropy_value = -np.sum(value_counts * np.log2(value_counts + 1e-10))
+    return entropy_value
 
 
 # =======================================================
@@ -338,13 +347,13 @@ def calculate_red_zone_efficiency(df):
 
 
 def calculate_formation_predictability(df):
-    """KPI 6: Formation Predictability Index"""
+    """KPI 6: Formation Predictability Index (using custom entropy)"""
     try:
         if 'offense_formation' not in df.columns or 'pass_result' not in df.columns:
             return None
         
         fpi_data = df.groupby('offense_formation')['pass_result'].apply(
-            lambda x: entropy(x.value_counts(normalize=True)) if len(x) > 1 else 0
+            lambda x: calculate_entropy(x) if len(x) > 1 else 0
         ).reset_index()
         
         fpi_data.columns = ['formation', 'entropy']
