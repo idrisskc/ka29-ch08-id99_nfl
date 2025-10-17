@@ -655,4 +655,4 @@ else:
 # =======================================================
 st.sidebar.markdown("---")
 st.sidebar.markdown("**NFL Big Data Bowl 2026**")
-st.sidebar.
+st.sidebar.caption("v3.0 - Complete Analytics Dashboard with 16 Strategic KPIs")
