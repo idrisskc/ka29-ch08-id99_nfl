@@ -311,16 +311,13 @@ def compute_all_kpis(df):
 # =======================================================
 
 def calculate_all_strategic_kpis(df):
-    """
-    Calculate all strategic KPIs for NFL tracking dataset.
-    Returns a dictionary of DataFrames with chart recommendations.
-    """
+    """Calculate all strategic KPIs for NFL tracking dataset"""
     kpis = {}
     total_kpis = 16
     progress_bar = st.progress(0)
     st.info("📊 Calculating advanced football intelligence KPIs...")
 
-    # KPI 1: QB Pressure & Performance Matrix
+    # KPI 1: QB Pressure Performance
     try:
         with st.spinner("Calculating QB Pressure Performance..."):
             kpis['QB_Pressure'] = calculate_qb_pressure_performance(df)
@@ -329,34 +326,34 @@ def calculate_all_strategic_kpis(df):
     except Exception as e:
         st.error(f"❌ QB Pressure failed: {e}")
 
-    # KPI 2: Route Running Efficiency
+    # KPI 2: Route Efficiency
     try:
-        with st.spinner("Calculating Route Efficiency Score..."):
+        with st.spinner("Calculating Route Efficiency..."):
             kpis['Route_Efficiency'] = calculate_route_efficiency_advanced(df)
             st.success("✅ Route Efficiency — **Radar Chart** recommended")
         progress_bar.progress(2 / total_kpis)
     except Exception as e:
         st.error(f"❌ Route Efficiency failed: {e}")
 
-    # KPI 3: Coverage Heat Map
+    # KPI 3: Coverage Heatmap
     try:
-        with st.spinner("Calculating Coverage Vulnerability..."):
+        with st.spinner("Calculating Coverage Heat..."):
             kpis['Coverage_Heat'] = calculate_coverage_heatmap(df)
             st.success("✅ Coverage Heat — **Heatmap** recommended")
         progress_bar.progress(3 / total_kpis)
     except Exception as e:
         st.error(f"❌ Coverage Heat failed: {e}")
 
-    # KPI 4: Pass Timing Windows
+    # KPI 4: Pass Timing
     try:
-        with st.spinner("Calculating Pass Timing Windows..."):
+        with st.spinner("Calculating Pass Timing..."):
             kpis['Pass_Timing'] = calculate_pass_timing_windows(df)
             st.success("✅ Pass Timing — **Step Chart** recommended")
         progress_bar.progress(4 / total_kpis)
     except Exception as e:
         st.error(f"❌ Pass Timing failed: {e}")
 
-    # KPI 5: Player Separation Analytics
+    # KPI 5: Player Separation
     try:
         with st.spinner("Calculating Player Separation..."):
             kpis['Separation'] = calculate_player_separation(df)
@@ -365,97 +362,97 @@ def calculate_all_strategic_kpis(df):
     except Exception as e:
         st.error(f"❌ Separation failed: {e}")
 
-    # KPI 6: Formation Tendency Analysis
+    # KPI 6: Formation Tendencies
     try:
         with st.spinner("Calculating Formation Tendencies..."):
             kpis['Formation_Tendency'] = calculate_formation_tendencies(df)
-            st.success("✅ Formation Tendency — **Sunburst Chart** recommended")
+            st.success("✅ Formation — **Sunburst Chart** recommended")
         progress_bar.progress(6 / total_kpis)
     except Exception as e:
-        st.error(f"❌ Formation Tendency failed: {e}")
+        st.error(f"❌ Formation failed: {e}")
 
-    # KPI 7: Win Probability Impact
+    # KPI 7: Win Probability
     try:
-        with st.spinner("Calculating Win Probability Impact..."):
+        with st.spinner("Calculating Win Probability..."):
             kpis['Win_Probability'] = calculate_win_probability_impact(df)
             st.success("✅ Win Probability — **Waterfall Chart** recommended")
         progress_bar.progress(7 / total_kpis)
     except Exception as e:
         st.error(f"❌ Win Probability failed: {e}")
 
-    # KPI 8: Defensive Reaction Metrics
+    # KPI 8: Defense Reaction
     try:
-        with st.spinner("Calculating Defensive Reaction Time..."):
+        with st.spinner("Calculating Defense Reaction..."):
             kpis['Defense_Reaction'] = calculate_defensive_reaction(df)
             st.success("✅ Defense Reaction — **Violin Plot** recommended")
         progress_bar.progress(8 / total_kpis)
     except Exception as e:
         st.error(f"❌ Defense Reaction failed: {e}")
 
-    # KPI 9: Red Zone Success Rate
+    # KPI 9: Red Zone Success
     try:
-        with st.spinner("Calculating Red Zone Efficiency..."):
+        with st.spinner("Calculating Red Zone Success..."):
             kpis['RedZone_Success'] = calculate_redzone_success(df)
             st.success("✅ Red Zone — **Gauge Chart** recommended")
         progress_bar.progress(9 / total_kpis)
     except Exception as e:
         st.error(f"❌ Red Zone failed: {e}")
 
-    # KPI 10: Tempo & Pace Analysis
+    # KPI 10: Tempo Analysis
     try:
-        with st.spinner("Calculating Tempo Impact..."):
+        with st.spinner("Calculating Tempo Analysis..."):
             kpis['Tempo_Analysis'] = calculate_tempo_analysis(df)
             st.success("✅ Tempo — **Time Series** recommended")
         progress_bar.progress(10 / total_kpis)
     except Exception as e:
         st.error(f"❌ Tempo failed: {e}")
 
-    # KPI 11: Player Movement Heatmap
+    # KPI 11: Movement Heatmap
     try:
-        with st.spinner("Calculating Player Movement Density..."):
+        with st.spinner("Calculating Movement Heatmap..."):
             kpis['Movement_Heat'] = calculate_movement_heatmap(df)
-            st.success("✅ Movement Heat — **Heatmap** recommended")
+            st.success("✅ Movement — **Heatmap** recommended")
         progress_bar.progress(11 / total_kpis)
     except Exception as e:
-        st.error(f"❌ Movement Heat failed: {e}")
+        st.error(f"❌ Movement failed: {e}")
 
-    # KPI 12: Pass Result Distribution
+    # KPI 12: Pass Results
     try:
-        with st.spinner("Calculating Pass Result Breakdown..."):
+        with st.spinner("Calculating Pass Results..."):
             kpis['Pass_Results'] = calculate_pass_results(df)
             st.success("✅ Pass Results — **Doughnut Chart** recommended")
         progress_bar.progress(12 / total_kpis)
     except Exception as e:
         st.error(f"❌ Pass Results failed: {e}")
 
-    # KPI 13: Expected Points Leverage
+    # KPI 13: Expected Points
     try:
-        with st.spinner("Calculating Expected Points Analysis..."):
+        with st.spinner("Calculating Expected Points..."):
             kpis['EP_Analysis'] = calculate_expected_points_analysis(df)
             st.success("✅ EP Analysis — **Waterfall Chart** recommended")
         progress_bar.progress(13 / total_kpis)
     except Exception as e:
         st.error(f"❌ EP Analysis failed: {e}")
 
-    # KPI 14: Coverage Type Effectiveness
+    # KPI 14: Coverage Type
     try:
-        with st.spinner("Calculating Coverage Type Performance..."):
+        with st.spinner("Calculating Coverage Type..."):
             kpis['Coverage_Type'] = calculate_coverage_type_performance(df)
             st.success("✅ Coverage Type — **Stacked Bar** recommended")
         progress_bar.progress(14 / total_kpis)
     except Exception as e:
         st.error(f"❌ Coverage Type failed: {e}")
 
-    # KPI 15: Player Speed Distribution
+    # KPI 15: Speed Distribution
     try:
         with st.spinner("Calculating Speed Distribution..."):
             kpis['Speed_Distribution'] = calculate_speed_distribution(df)
-            st.success("✅ Speed Distribution — **Histogram** recommended")
+            st.success("✅ Speed — **Histogram** recommended")
         progress_bar.progress(15 / total_kpis)
     except Exception as e:
-        st.error(f"❌ Speed Distribution failed: {e}")
+        st.error(f"❌ Speed failed: {e}")
 
-    # KPI 16: Play Action Success Rate
+    # KPI 16: Play Action Impact
     try:
         with st.spinner("Calculating Play Action Impact..."):
             kpis['PlayAction_Impact'] = calculate_play_action_impact(df)
@@ -470,22 +467,21 @@ def calculate_all_strategic_kpis(df):
 
 
 # =======================================================
-# 🎯 Individual Strategic KPI Functions (NFL-Specific)
+# 🎯 Individual Strategic KPI Functions
 # =======================================================
 
 def calculate_qb_pressure_performance(df):
-    """QB Pressure & Performance Matrix"""
+    """QB Pressure Performance Matrix"""
     try:
-        cols_needed = ['s', 'a', 'player_role', 'yards_gained']
+        cols_needed = ['s', 'a', 'player_role']
         if not all(col in df.columns for col in cols_needed):
-            return pd.DataFrame({'metric': ['Insufficient data'], 'value': [0]})
+            return pd.DataFrame({'metric': ['No data'], 'value': [0]})
         
         qb_df = df[df['player_role'].str.contains('Passer', case=False, na=False)].copy()
-        pressure_df = qb_df.groupby('play_id').agg({
-            's': 'mean',
-            'a': 'mean',
-            'yards_gained': 'mean'
-        }).reset_index()
+        if len(qb_df) == 0:
+            return pd.DataFrame({'metric': ['No QB data'], 'value': [0]})
+        
+        pressure_df = qb_df.groupby('play_id').agg({'s': 'mean', 'a': 'mean'}).reset_index()
         pressure_df['pressure_score'] = (pressure_df['s'] * pressure_df['a']) / 10
         
         return pressure_df.head(100)
@@ -494,25 +490,24 @@ def calculate_qb_pressure_performance(df):
 
 
 def calculate_route_efficiency_advanced(df):
-    """Advanced Route Running Efficiency Analysis"""
+    """Route Efficiency Analysis"""
     try:
         if 'player_role' not in df.columns:
             return pd.DataFrame({'metric': ['No route data'], 'value': [0]})
         
         receiver_df = df[df['player_role'].str.contains('Receiver|Route', case=False, na=False)].copy()
         
-        if 's' in receiver_df.columns and 'x' in receiver_df.columns:
+        if 's' in receiver_df.columns and 'x' in receiver_df.columns and len(receiver_df) > 0:
             route_metrics = receiver_df.groupby('play_id').agg({
-                's': ['mean', 'max'],
-                'x': lambda x: x.max() - x.min(),
-                'y': lambda x: x.max() - x.min() if 'y' in receiver_df.columns else 0
+                's': 'mean',
+                'x': lambda x: x.max() - x.min()
             }).reset_index()
-            route_metrics.columns = ['play_id', 'avg_speed', 'max_speed', 'x_range', 'y_range']
-            route_metrics['efficiency'] = (route_metrics['x_range'] + route_metrics['y_range']) / (route_metrics['avg_speed'] + 1)
+            route_metrics.columns = ['play_id', 'avg_speed', 'x_range']
+            route_metrics['efficiency'] = route_metrics['x_range'] / (route_metrics['avg_speed'] + 1)
             
             return route_metrics.head(100)
         
-        return pd.DataFrame({'metric': ['Insufficient tracking data'], 'value': [0]})
+        return pd.DataFrame({'metric': ['No data'], 'value': [0]})
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
@@ -538,13 +533,11 @@ def calculate_pass_timing_windows(df):
     """Pass Timing Window Analysis"""
     try:
         if 'frame_id' not in df.columns:
-            return pd.DataFrame({'timing_category': ['No data'], 'count': [0]})
+            return pd.DataFrame({'timing': ['No data'], 'count': [0]})
         
         timing_df = df.groupby('play_id')['frame_id'].agg(['min', 'max', 'count']).reset_index()
         timing_df['window_duration'] = timing_df['max'] - timing_df['min']
-        timing_df['timing_category'] = pd.cut(timing_df['window_duration'], 
-                                               bins=[0, 10, 20, 50], 
-                                               labels=['Quick', 'Medium', 'Long'])
+        timing_df['timing_category'] = pd.cut(timing_df['window_duration'], bins=[0, 10, 20, 50], labels=['Quick', 'Medium', 'Long'])
         
         return timing_df[['play_id', 'window_duration', 'timing_category']].head(100)
     except Exception as e:
@@ -552,12 +545,11 @@ def calculate_pass_timing_windows(df):
 
 
 def calculate_player_separation(df):
-    """Player Separation Metrics (Distance between players)"""
+    """Player Separation Metrics"""
     try:
         if 'x' not in df.columns or 'player_role' not in df.columns:
-            return pd.DataFrame({'separation': [0]})
+            return pd.DataFrame({'separation': [5.0]})
         
-        # Calculate separation between offensive and defensive players
         receiver_df = df[df['player_role'].str.contains('Receiver', case=False, na=False)]
         defense_df = df[df['player_side'].str.contains('Defense', case=False, na=False)]
         
@@ -568,13 +560,10 @@ def calculate_player_separation(df):
                 def_play = defense_df[defense_df['play_id'] == play]
                 
                 if len(rec_play) > 0 and len(def_play) > 0:
-                    avg_sep = np.mean([
-                        np.sqrt((rec_play['x'].mean() - def_play['x'].mean())**2 + 
-                               (rec_play['y'].mean() - def_play['y'].mean())**2)
-                    ])
+                    avg_sep = np.sqrt((rec_play['x'].mean() - def_play['x'].mean())**2 + (rec_play['y'].mean() - def_play['y'].mean())**2)
                     separation_data.append({'play_id': play, 'separation': avg_sep})
             
-            return pd.DataFrame(separation_data)
+            return pd.DataFrame(separation_data) if separation_data else pd.DataFrame({'separation': [5.0]})
         
         return pd.DataFrame({'separation': [5.0]})
     except Exception as e:
@@ -597,7 +586,7 @@ def calculate_formation_tendencies(df):
 
 
 def calculate_win_probability_impact(df):
-    """Win Probability Impact Analysis"""
+    """Win Probability Impact"""
     try:
         wp_cols = ['home_team_win_probability_added', 'visitor_team_win_probility_added']
         available_cols = [col for col in wp_cols if col in df.columns]
@@ -606,7 +595,6 @@ def calculate_win_probability_impact(df):
             return pd.DataFrame({'impact': ['Medium'], 'value': [0.5]})
         
         wp_data = df[available_cols].describe().T.reset_index()
-        wp_data.columns = ['metric', 'count', 'mean', 'std', 'min', '25%', '50%', '75%', 'max']
         
         return wp_data
     except Exception as e:
@@ -614,14 +602,16 @@ def calculate_win_probability_impact(df):
 
 
 def calculate_defensive_reaction(df):
-    """Defensive Reaction Time Metrics"""
+    """Defensive Reaction Time"""
     try:
         if 'a' not in df.columns or 'player_side' not in df.columns:
             return pd.DataFrame({'reaction_time': [1.2]})
         
         defense_df = df[df['player_side'].str.contains('Defense', case=False, na=False)].copy()
-        defense_df['reaction_time'] = defense_df['s'] / (defense_df['a'].abs() + 0.1)
+        if len(defense_df) == 0:
+            return pd.DataFrame({'reaction_time': [1.2]})
         
+        defense_df['reaction_time'] = defense_df['s'] / (defense_df['a'].abs() + 0.1)
         reaction_stats = defense_df['reaction_time'].describe().to_frame().T
         
         return reaction_stats
@@ -637,7 +627,7 @@ def calculate_redzone_success(df):
         
         redzone_df = df[df['absolute_yardline_number'] <= 20].copy()
         
-        if 'yards_gained' in redzone_df.columns:
+        if 'yards_gained' in redzone_df.columns and len(redzone_df) > 0:
             success_rate = (redzone_df['yards_gained'] > 0).mean() * 100
         else:
             success_rate = 65.0
@@ -654,9 +644,7 @@ def calculate_tempo_analysis(df):
             return pd.DataFrame({'tempo': ['Medium'], 'count': [50]})
         
         tempo_df = df.groupby('play_id')['frame_id'].count().reset_index(name='frame_count')
-        tempo_df['tempo'] = pd.cut(tempo_df['frame_count'], 
-                                    bins=[0, 20, 40, 100], 
-                                    labels=['Fast', 'Medium', 'Slow'])
+        tempo_df['tempo'] = pd.cut(tempo_df['frame_count'], bins=[0, 20, 40, 100], labels=['Fast', 'Medium', 'Slow'])
         
         tempo_summary = tempo_df['tempo'].value_counts().reset_index()
         tempo_summary.columns = ['tempo', 'count']
@@ -667,7 +655,7 @@ def calculate_tempo_analysis(df):
 
 
 def calculate_movement_heatmap(df):
-    """Player Movement Density Heatmap"""
+    """Player Movement Density"""
     try:
         if 'x' not in df.columns or 'y' not in df.columns:
             return pd.DataFrame({'x_bin': [50], 'y_bin': [25], 'density': [10]})
@@ -684,7 +672,7 @@ def calculate_movement_heatmap(df):
 
 
 def calculate_pass_results(df):
-    """Pass Result Distribution Analysis"""
+    """Pass Result Distribution"""
     try:
         if 'pass_result' not in df.columns:
             return pd.DataFrame({'result': ['Complete'], 'count': [100]})
@@ -699,7 +687,7 @@ def calculate_pass_results(df):
 
 
 def calculate_expected_points_analysis(df):
-    """Expected Points Added Analysis"""
+    """Expected Points Analysis"""
     try:
         ep_cols = ['expected_points', 'expected_points_added']
         available = [col for col in ep_cols if col in df.columns]
@@ -708,7 +696,6 @@ def calculate_expected_points_analysis(df):
             return pd.DataFrame({'metric': ['EPA'], 'value': [0.15]})
         
         ep_df = df[available].describe().T.reset_index()
-        ep_df.columns = ['metric'] + list(ep_df.columns[1:])
         
         return ep_df
     except Exception as e:
@@ -716,11 +703,113 @@ def calculate_expected_points_analysis(df):
 
 
 def calculate_coverage_type_performance(df):
-    """Coverage Type Performance Analysis"""
+    """Coverage Type Performance"""
     try:
         if 'team_coverage_type' not in df.columns:
             return pd.DataFrame({'coverage': ['Man'], 'success': [60]})
         
         if 'yards_gained' in df.columns:
             coverage_perf = df.groupby('team_coverage_type')['yards_gained'].agg(['mean', 'count']).reset_index()
-            coverage_perf.columns = ['coverage_type', 'avg_yards',
+            coverage_perf.columns = ['coverage_type', 'avg_yards', 'count']
+            return coverage_perf
+        
+        return df['team_coverage_type'].value_counts().reset_index()
+    except Exception as e:
+        return pd.DataFrame({'error': [str(e)]})
+
+
+def calculate_speed_distribution(df):
+    """Speed Distribution Analysis"""
+    try:
+        if 's' not in df.columns:
+            return pd.DataFrame({'speed_range': ['0-5'], 'count': [100]})
+        
+        df_copy = df.copy()
+        df_copy['speed_range'] = pd.cut(df_copy['s'], bins=[0, 5, 10, 15, 30], labels=['0-5', '5-10', '10-15', '15+'])
+        
+        speed_dist = df_copy['speed_range'].value_counts().reset_index()
+        speed_dist.columns = ['speed_range', 'count']
+        
+        return speed_dist
+    except Exception as e:
+        return pd.DataFrame({'error': [str(e)]})
+
+
+def calculate_play_action_impact(df):
+    """Play Action Impact Analysis"""
+    try:
+        if 'play_action' not in df.columns:
+            return pd.DataFrame({'play_action': ['Yes'], 'avg_yards': [7.5]})
+        
+        if 'yards_gained' in df.columns:
+            pa_impact = df.groupby('play_action')['yards_gained'].agg(['mean', 'count']).reset_index()
+            pa_impact.columns = ['play_action', 'avg_yards', 'count']
+            return pa_impact
+        
+        return df['play_action'].value_counts().reset_index()
+    except Exception as e:
+        return pd.DataFrame({'error': [str(e)]})
+
+
+# =======================================================
+# 📈 HELPER FUNCTIONS
+# =======================================================
+
+def get_column_info(df):
+    """Get detailed column information"""
+    try:
+        info = pd.DataFrame({
+            'Column': df.columns,
+            'Type': df.dtypes.values,
+            'Non-Null': df.count().values,
+            'Null': df.isnull().sum().values,
+            'Null %': (df.isnull().sum().values / len(df) * 100).round(2),
+            'Unique': [df[col].nunique() for col in df.columns]
+        })
+        return info
+    except Exception as e:
+        st.error(f"Error in get_column_info: {str(e)}")
+        return pd.DataFrame()
+
+
+def detect_available_columns(df):
+    """Detect standard NFL columns"""
+    standard_columns = {
+        'Tracking Data': ['x', 'y', 's', 'a', 'o', 'dir'],
+        'Identifiers': ['game_id', 'play_id', 'nfl_id', 'frame_id'],
+        'Performance Metrics': ['yards_gained', 'expected_points', 'expected_points_added'],
+        'Player Info': ['player_name', 'player_position', 'player_role', 'player_side'],
+        'Game Context': ['offense_formation', 'pass_result', 'team_coverage_type']
+    }
+    
+    available = {}
+    for category, cols in standard_columns.items():
+        found = [col for col in cols if col in df.columns]
+        if found:
+            available[category] = found
+    
+    return available
+
+
+def get_data_summary(df):
+    """Generate comprehensive dataset summary"""
+    try:
+        summary = {
+            'Total Rows': len(df),
+            'Total Columns': len(df.columns),
+            'Memory Usage (MB)': round(df.memory_usage(deep=True).sum() / 1024**2, 2),
+            'Duplicate Rows': df.duplicated().sum(),
+            'Total Missing Values': df.isnull().sum().sum(),
+            'Missing %': round(df.isnull().sum().sum() / (len(df) * len(df.columns)) * 100, 2)
+        }
+        return summary
+    except Exception as e:
+        st.error(f"Error in get_data_summary: {str(e)}")
+        return {
+            'Total Rows': 0,
+            'Total Columns': 0,
+            'Memory Usage (MB)': 0,
+            'Duplicate Rows': 0,
+            'Total Missing Values': 0,
+            'Missing %': 0
+        }
