@@ -1,5 +1,5 @@
 # =======================================================
-# app.py - NFL Big Data Bowl 2026 Dashboard (FIXED)
+# app.py - NFL Big Data Bowl 2026 Dashboard (COMPLETE)
 # =======================================================
 
 import sys
@@ -46,14 +46,6 @@ if debug_mode:
             st.error(f"❌ plotly: {e}")
             st.stop()
         
-        # Test datetime
-        try:
-            from datetime import datetime
-            st.success(f"✅ datetime")
-        except Exception as e:
-            st.error(f"❌ datetime: {e}")
-            st.stop()
-        
         st.write("---")
         st.write("### 📄 Checking Files...")
         
@@ -82,6 +74,7 @@ if debug_mode:
             required_functions = [
                 'load_data_from_kaggle',
                 'compute_all_kpis',
+                'calculate_all_strategic_kpis',
                 'load_local_data',
                 'get_column_info',
                 'detect_available_columns',
@@ -127,7 +120,8 @@ from datetime import datetime
 try:
     from utils import (
         load_data_from_kaggle, 
-        compute_all_kpis, 
+        compute_all_kpis,
+        calculate_all_strategic_kpis,
         load_local_data,
         get_column_info,
         detect_available_columns,
@@ -211,7 +205,7 @@ st.markdown(f"""
 # 🏈 Header
 # ---------------------
 st.title("🏈 NFL Big Data Bowl 2026")
-st.markdown("_Advanced analytics dashboard for NFL tracking data_")
+st.markdown("_Advanced analytics dashboard for NFL tracking data with 12 strategic KPIs_")
 st.markdown("---")
 
 # ---------------------
@@ -221,6 +215,10 @@ if 'full_df' not in st.session_state:
     st.session_state.full_df = pd.DataFrame()
 if 'data_loaded' not in st.session_state:
     st.session_state.data_loaded = False
+if 'strategic_kpis' not in st.session_state:
+    st.session_state.strategic_kpis = {}
+if 'strategic_kpis_calculated' not in st.session_state:
+    st.session_state.strategic_kpis_calculated = False
 
 # ---------------------
 # 📊 Sidebar Controls
@@ -276,10 +274,10 @@ if data_source == "Kaggle API":
                         competition=competition_name
                     )
                     
-                    # Vérifier que les données ont été chargées
                     if df_result is not None and not df_result.empty:
                         st.session_state.full_df = df_result
                         st.session_state.data_loaded = True
+                        st.session_state.strategic_kpis_calculated = False
                         st.success(f"✅ Successfully loaded {len(st.session_state.full_df):,} rows!")
                         st.info("📊 Scroll down to see the visualizations!")
                     else:
@@ -332,6 +330,7 @@ elif data_source == "Upload CSV":
                 if dfs:
                     st.session_state.full_df = pd.concat(dfs, ignore_index=True)
                     st.session_state.data_loaded = True
+                    st.session_state.strategic_kpis_calculated = False
                     st.sidebar.success(f"✅ Total: {len(st.session_state.full_df):,} rows!")
                 else:
                     st.sidebar.error("❌ No files could be loaded")
@@ -355,6 +354,7 @@ else:
                 if df_result is not None and not df_result.empty:
                     st.session_state.full_df = df_result
                     st.session_state.data_loaded = True
+                    st.session_state.strategic_kpis_calculated = False
                     st.success(f"✅ Loaded {len(st.session_state.full_df):,} rows")
                 else:
                     st.error("❌ No data loaded")
@@ -372,6 +372,13 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
     st.sidebar.markdown("---")
     st.sidebar.subheader("📊 Visualization Settings")
     
+    # KPI Type Selection
+    kpi_type = st.sidebar.radio(
+        "KPI Analysis Type",
+        ["Basic KPIs", "Strategic KPIs (Advanced)"],
+        help="Choose between basic metrics or advanced 12 strategic KPIs"
+    )
+    
     chart_type = st.sidebar.selectbox(
         "Chart Type",
         ["Bar", "Line", "Area", "Scatter"]
@@ -388,6 +395,12 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
         "Show Data Information",
         value=True
     )
+    
+    # Button to calculate strategic KPIs
+    if kpi_type == "Strategic KPIs (Advanced)":
+        if st.sidebar.button("🧠 Calculate Strategic KPIs", type="primary"):
+            st.session_state.strategic_kpis = calculate_all_strategic_kpis(st.session_state.full_df)
+            st.session_state.strategic_kpis_calculated = True
 
 # ---------------------
 # 🎯 Main Dashboard Content
@@ -436,106 +449,159 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
         
         st.markdown("---")
     
-    # Compute KPIs
-    try:
-        with st.spinner("🧮 Computing KPIs..."):
-            kpis = compute_all_kpis(df)
-    except Exception as e:
-        st.error(f"❌ Error computing KPIs: {str(e)}")
-        if debug_mode:
-            st.code(str(e), language="python")
-        kpis = {}
-    
-    if not kpis:
-        st.warning("⚠️ No KPIs could be computed from the data.")
-        with st.expander("🔍 Dataset Columns"):
-            st.write(df.columns.tolist())
-    else:
-        # KPI Cards
-        st.markdown("## 📊 Key Performance Indicators")
-        
+    # Display appropriate KPIs based on selection
+    if kpi_type == "Basic KPIs":
+        # Compute Basic KPIs
         try:
-            sorted_kpis = dict(sorted(kpis.items(), key=lambda x: abs(x[1]) if not np.isnan(x[1]) else 0, reverse=True)[:show_top_n])
-            
-            cols_per_row = 4
-            kpi_items = list(sorted_kpis.items())
-            
-            for i in range(0, len(kpi_items), cols_per_row):
-                cols = st.columns(cols_per_row)
-                for j, (kpi_name, kpi_value) in enumerate(kpi_items[i:i+cols_per_row]):
-                    with cols[j]:
-                        display_value = f"{kpi_value:.2f}" if not np.isnan(kpi_value) else "N/A"
-                        st.markdown(f"""
-                        <div class="kpi-card">
-                            <div class="kpi-title">{kpi_name}</div>
-                            <div class="kpi-value">{display_value}</div>
-                            <div class="kpi-sub">Computed Value</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+            with st.spinner("🧮 Computing Basic KPIs..."):
+                kpis = compute_all_kpis(df)
         except Exception as e:
-            st.error(f"❌ Error displaying KPIs: {str(e)}")
+            st.error(f"❌ Error computing KPIs: {str(e)}")
             if debug_mode:
                 st.code(str(e), language="python")
+            kpis = {}
         
-        st.markdown("---")
-        
-        # KPI Chart
-        st.markdown("## 📈 KPI Visualization")
-        
-        try:
-            df_kpi = pd.DataFrame([
-                {"KPI": k, "Value": v} 
-                for k, v in sorted_kpis.items() 
-                if not np.isnan(v)
-            ])
+        if not kpis:
+            st.warning("⚠️ No KPIs could be computed from the data.")
+            with st.expander("🔍 Dataset Columns"):
+                st.write(df.columns.tolist())
+        else:
+            # KPI Cards
+            st.markdown("## 📊 Basic Key Performance Indicators")
             
-            if not df_kpi.empty:
-                if chart_type == "Bar":
-                    fig = px.bar(df_kpi, x="KPI", y="Value", color="Value", 
-                               color_continuous_scale="Viridis", template="plotly_dark")
-                elif chart_type == "Line":
-                    fig = px.line(df_kpi, x="KPI", y="Value", markers=True, template="plotly_dark")
-                elif chart_type == "Area":
-                    fig = px.area(df_kpi, x="KPI", y="Value", template="plotly_dark")
+            try:
+                sorted_kpis = dict(sorted(kpis.items(), key=lambda x: abs(x[1]) if not np.isnan(x[1]) else 0, reverse=True)[:show_top_n])
+                
+                cols_per_row = 4
+                kpi_items = list(sorted_kpis.items())
+                
+                for i in range(0, len(kpi_items), cols_per_row):
+                    cols = st.columns(cols_per_row)
+                    for j, (kpi_name, kpi_value) in enumerate(kpi_items[i:i+cols_per_row]):
+                        with cols[j]:
+                            display_value = f"{kpi_value:.2f}" if not np.isnan(kpi_value) else "N/A"
+                            st.markdown(f"""
+                            <div class="kpi-card">
+                                <div class="kpi-title">{kpi_name}</div>
+                                <div class="kpi-value">{display_value}</div>
+                                <div class="kpi-sub">Computed Value</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"❌ Error displaying KPIs: {str(e)}")
+                if debug_mode:
+                    st.code(str(e), language="python")
+            
+            st.markdown("---")
+            
+            # KPI Chart
+            st.markdown("## 📈 KPI Visualization")
+            
+            try:
+                df_kpi = pd.DataFrame([
+                    {"KPI": k, "Value": v} 
+                    for k, v in sorted_kpis.items() 
+                    if not np.isnan(v)
+                ])
+                
+                if not df_kpi.empty:
+                    if chart_type == "Bar":
+                        fig = px.bar(df_kpi, x="KPI", y="Value", color="Value", 
+                                   color_continuous_scale="Viridis", template="plotly_dark")
+                    elif chart_type == "Line":
+                        fig = px.line(df_kpi, x="KPI", y="Value", markers=True, template="plotly_dark")
+                    elif chart_type == "Area":
+                        fig = px.area(df_kpi, x="KPI", y="Value", template="plotly_dark")
+                    else:
+                        fig = px.scatter(df_kpi, x="KPI", y="Value", size="Value", color="Value", 
+                                       color_continuous_scale="Plasma", template="plotly_dark")
+                    
+                    fig.update_layout(
+                        paper_bgcolor=COLOR_BG,
+                        plot_bgcolor=COLOR_PANEL,
+                        font_color=TEXT_COLOR,
+                        height=500
+                    )
+                    
+                    st.plotly_chart(fig, use_container_width=True)
                 else:
-                    fig = px.scatter(df_kpi, x="KPI", y="Value", size="Value", color="Value", 
-                                   color_continuous_scale="Plasma", template="plotly_dark")
-                
-                fig.update_layout(
-                    paper_bgcolor=COLOR_BG,
-                    plot_bgcolor=COLOR_PANEL,
-                    font_color=TEXT_COLOR,
-                    height=500
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No data available for visualization")
+                    st.info("No data available for visualization")
+            except Exception as e:
+                st.error(f"❌ Chart error: {str(e)}")
+                if debug_mode:
+                    st.code(str(e), language="python")
+    
+    else:  # Strategic KPIs
+        st.markdown("## 🧠 Strategic Football Intelligence KPIs")
+        
+        if st.session_state.strategic_kpis_calculated and st.session_state.strategic_kpis:
+            st.success(f"✅ {len(st.session_state.strategic_kpis)} Strategic KPIs calculated!")
+            
+            # Display each strategic KPI
+            for kpi_name, kpi_data in st.session_state.strategic_kpis.items():
+                with st.expander(f"📊 {kpi_name}", expanded=False):
+                    if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                        st.dataframe(kpi_data.head(20), use_container_width=True)
+                        
+                        # Try to create a simple visualization
+                        try:
+                            if len(kpi_data.columns) >= 2:
+                                fig = px.bar(
+                                    kpi_data.head(10), 
+                                    x=kpi_data.columns[0], 
+                                    y=kpi_data.columns[1],
+                                    template="plotly_dark"
+                                )
+                                fig.update_layout(
+                                    paper_bgcolor=COLOR_BG,
+                                    plot_bgcolor=COLOR_PANEL,
+                                    font_color=TEXT_COLOR,
+                                    height=400
+                                )
+                                st.plotly_chart(fig, use_container_width=True)
+                        except:
+                            pass
+                    else:
+                        st.info("No data available for this KPI")
+        else:
+            st.info("👈 Click 'Calculate Strategic KPIs' in the sidebar to compute advanced metrics")
+            st.markdown("""
+            ### 🎯 Available Strategic KPIs:
+            
+            1. **DPI** - Defensive Pressure Index
+            2. **RES** - Route Efficiency Score
+            3. **CVM** - Coverage Vulnerability Matrix
+            4. **PTOI** - Pass Timing Optimization Index
+            5. **SAS** - Spatial Advantage Score
+            6. **FPI** - Formation Predictability Index
+            7. **WPL** - Win Probability Leverage
+            8. **DRT** - Defensive Reaction Time
+            9. **RZCE** - Red Zone Conversion Efficiency
+            10. **TIS** - Tempo Impact Score
+            11. **PHIM** - Player Heat Intensity Map
+            12. **OFB** - Offensive Formation Balance
+            """)
+    
+    # Data Preview
+    st.markdown("---")
+    st.markdown("## 📋 Data Explorer")
+    
+    with st.expander("🔍 View Sample Data"):
+        try:
+            st.dataframe(df.head(100), use_container_width=True, height=400)
         except Exception as e:
-            st.error(f"❌ Chart error: {str(e)}")
+            st.error(f"Error: {str(e)}")
             if debug_mode:
                 st.code(str(e), language="python")
-        
-        # Data Preview
-        st.markdown("---")
-        st.markdown("## 📋 Data Explorer")
-        
-        with st.expander("🔍 View Sample Data"):
-            try:
-                st.dataframe(df.head(100), use_container_width=True, height=400)
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-                if debug_mode:
-                    st.code(str(e), language="python")
-        
-        with st.expander("📊 Column Statistics"):
-            try:
-                col_info = get_column_info(df)
-                st.dataframe(col_info, use_container_width=True, height=400)
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-                if debug_mode:
-                    st.code(str(e), language="python")
+    
+    with st.expander("📊 Column Statistics"):
+        try:
+            col_info = get_column_info(df)
+            st.dataframe(col_info, use_container_width=True, height=400)
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+            if debug_mode:
+                st.code(str(e), language="python")
 
 else:
     # Welcome Screen
@@ -562,10 +628,15 @@ else:
     - Click "Load from Local Directory"
     
     #### 📊 Features:
-    - **14+ KPIs** computed automatically
+    - **14+ Basic KPIs** computed automatically
+    - **12 Strategic KPIs** for advanced analysis
     - **Interactive visualizations** (Bar, Line, Area, Scatter)
     - **Data exploration** tools
     - **Column statistics** and analysis
+    
+    #### 🎯 Two Analysis Modes:
+    - **Basic KPIs**: Quick overview metrics (speed, yards, completion, etc.)
+    - **Strategic KPIs**: Advanced football intelligence (pressure index, route efficiency, coverage vulnerability, etc.)
     
     #### 🔍 Troubleshooting:
     - Check "Show Debug Info" in sidebar for diagnostics
@@ -576,4 +647,4 @@ else:
 # Footer
 st.sidebar.markdown("---")
 st.sidebar.markdown("**NFL Big Data Bowl 2026**")
-st.sidebar.caption("v1.0 - Analytics Dashboard")
+st.sidebar.caption("v2.0 - Advanced Analytics Dashboard")
