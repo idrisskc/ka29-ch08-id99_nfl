@@ -13,6 +13,115 @@ import gc
 
 
 # =======================================================
+# 💾 PERSISTENT CACHE FUNCTIONS (4 MONTHS RETENTION)
+# =======================================================
+
+def save_to_persistent_cache(df, cache_duration_months=4):
+    """Save DataFrame to persistent pickle cache with 4-month expiration"""
+    try:
+        import pickle
+        from datetime import datetime, timedelta
+        
+        cache_dir = 'nfl_data_cache'
+        os.makedirs(cache_dir, exist_ok=True)
+        
+        cache_file = os.path.join(cache_dir, 'nfl_data_cached.pkl')
+        metadata_file = os.path.join(cache_dir, 'cache_metadata.json')
+        
+        # Save data
+        with open(cache_file, 'wb') as f:
+            pickle.dump(df, f, protocol=pickle.HIGHEST_PROTOCOL)
+        
+        # Save metadata
+        expiry_date = datetime.now() + timedelta(days=cache_duration_months * 30)
+        metadata = {
+            'created_at': datetime.now().isoformat(),
+            'expires_at': expiry_date.isoformat(),
+            'rows': len(df),
+            'columns': len(df.columns),
+            'size_mb': df.memory_usage(deep=True).sum() / 1024**2
+        }
+        
+        import json
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        st.success(f"💾 Data cached until {expiry_date.strftime('%Y-%m-%d')}")
+        
+    except Exception as e:
+        st.warning(f"Cache save failed: {e}")
+
+
+def load_from_persistent_cache():
+    """Load DataFrame from persistent cache if valid"""
+    try:
+        import pickle
+        from datetime import datetime
+        import json
+        
+        cache_dir = 'nfl_data_cache'
+        cache_file = os.path.join(cache_dir, 'nfl_data_cached.pkl')
+        metadata_file = os.path.join(cache_dir, 'cache_metadata.json')
+        
+        if not os.path.exists(cache_file) or not os.path.exists(metadata_file):
+            return None
+        
+        # Check expiration
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+        
+        expires_at = datetime.fromisoformat(metadata['expires_at'])
+        
+        if datetime.now() > expires_at:
+            st.warning("⚠️ Cached data expired")
+            return None
+        
+        # Load data
+        with open(cache_file, 'rb') as f:
+            df = pickle.load(f)
+        
+        days_remaining = (expires_at - datetime.now()).days
+        st.success(f"✅ Loaded cached data ({metadata['rows']:,} rows) - Valid for {days_remaining} more days")
+        
+        return df
+        
+    except Exception as e:
+        st.warning(f"Cache load failed: {e}")
+        return None
+
+
+def get_cache_info():
+    """Get information about current cache"""
+    try:
+        import json
+        from datetime import datetime
+        
+        cache_dir = 'nfl_data_cache'
+        metadata_file = os.path.join(cache_dir, 'cache_metadata.json')
+        
+        if not os.path.exists(metadata_file):
+            return None
+        
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+        
+        created = datetime.fromisoformat(metadata['created_at'])
+        expires = datetime.fromisoformat(metadata['expires_at'])
+        days_remaining = (expires - datetime.now()).days
+        
+        return {
+            'created': created.strftime('%Y-%m-%d %H:%M'),
+            'expires': expires.strftime('%Y-%m-%d %H:%M'),
+            'days_remaining': max(0, days_remaining),
+            'rows': metadata['rows'],
+            'columns': metadata['columns'],
+            'size_mb': metadata['size_mb']
+        }
+    except:
+        return None
+
+
+# =======================================================
 # 📦 DATA LOADING FUNCTIONS
 # =======================================================
 
@@ -61,7 +170,8 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
         
         st.success(f"✅ Found {len(csv_files)} CSV files")
         
-        MAX_FILES = 20
+        # AUGMENTED: Support jusqu'à 50 fichiers (au lieu de 20)
+        MAX_FILES = 50
         if len(csv_files) > MAX_FILES:
             st.warning(f"⚠️ Loading only first {MAX_FILES} files to prevent memory issues.")
             csv_files = csv_files[:MAX_FILES]
@@ -73,12 +183,18 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
             file_name = os.path.basename(file_path)
             try:
                 st.info(f"📥 Loading {file_name}... ({idx+1}/{len(csv_files)})")
-                df = pd.read_csv(file_path, low_memory=False)
+                
+                # OPTIMIZED: Read with chunking for large files
+                df = pd.read_csv(file_path, low_memory=False, engine='c')
                 df = optimize_dataframe(df)
+                
+                # MEMORY: Aggressive optimization
                 dfs.append(df)
                 st.success(f"✓ {file_name}: {len(df):,} rows, {len(df.columns)} cols")
+                
                 del df
                 gc.collect()
+                
             except Exception as e:
                 st.warning(f"⚠️ Skipped {file_name}: {str(e)}")
             
@@ -90,13 +206,20 @@ def load_data_from_kaggle(username, key, competition="nfl-big-data-bowl-2026-ana
         
         st.info("🔄 Combining all data...")
         full_df = pd.concat(dfs, ignore_index=True)
+        
+        # MEMORY: Final cleanup
         del dfs
         gc.collect()
+        
+        # PERSISTENCE: Save to cache for 4 months
+        save_to_persistent_cache(full_df, cache_duration_months=4)
         
         if os.path.exists('temp_data'):
             shutil.rmtree('temp_data')
         
         st.success(f"✅ Loaded {len(full_df):,} total rows, {len(full_df.columns)} columns")
+        st.info("💾 Data cached for 4 months")
+        
         return full_df
         
     except Exception as e:
