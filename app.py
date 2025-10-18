@@ -273,8 +273,8 @@ div[data-testid="stMetricValue"] {{
     margin: 10px 0;
 }}
 </style>
-""", unsafe_allow_html=True)0.2s;
-}}
+""", unsafe_allow_html=True)
+
 .kpi-card:hover {{
     transform: translateY(-2px);
     border-color: rgba(255,215,0,0.4);
