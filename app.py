@@ -102,9 +102,6 @@ if debug_mode:
             st.error(f"❌ Unexpected error: {e}")
             st.stop()
 
-# =======================================================
-# 📦 IMPORTS PRINCIPAUX
-# =======================================================
 import pandas as pd
 import numpy as np
 import plotly.express as px
