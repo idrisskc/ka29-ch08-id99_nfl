@@ -276,7 +276,7 @@ div[data-testid="stMetricValue"] {{
 """, unsafe_allow_html=True)
 
 .kpi-card:hover {{
-    transform: translateY(1px);
+    transform: translateY(-2px);
     border-color: rgba(255,215,0,0.4);
 }}
 .kpi-title {{ 
