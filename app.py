@@ -488,105 +488,293 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
         if st.session_state.strategic_kpis_calculated and st.session_state.strategic_kpis:
             st.success(f"✅ {len(st.session_state.strategic_kpis)} Strategic KPIs calculated successfully!")
             
-            # Display in 2-column grid
+            # Create tabs for better organization
+            tab1, tab2, tab3, tab4 = st.tabs([
+                "🔥 Performance Analytics (1-4)", 
+                "🎯 Tactical Analysis (5-8)", 
+                "📊 Efficiency Metrics (9-12)", 
+                "⚡ Advanced Stats (13-16)"
+            ])
+            
             kpi_names = list(st.session_state.strategic_kpis.keys())
             
-            for i in range(0, len(kpi_names), 2):
-                col1, col2 = st.columns(2)
-                
-                # Left column KPI
-                with col1:
-                    if i < len(kpi_names):
-                        kpi_name = kpi_names[i]
-                        kpi_data = st.session_state.strategic_kpis[kpi_name]
-                        
-                        st.markdown(f"""
-                        <div class="strategic-kpi-header">
-                            <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                            <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                            with st.expander("📊 View Data Table", expanded=False):
-                                st.dataframe(kpi_data.head(20), use_container_width=True)
+            # TAB 1: KPIs 1-4
+            with tab1:
+                for i in range(0, min(4, len(kpi_names)), 2):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if i < len(kpi_names):
+                            kpi_name = kpi_names[i]
+                            kpi_data = st.session_state.strategic_kpis[kpi_name]
                             
-                            # Use advanced chart visualizer
-                            try:
-                                fig = visualize_kpi(kpi_name, kpi_data)
-                                if fig:
-                                    st.plotly_chart(fig, use_container_width=True)
-                                else:
-                                    st.info("💡 Chart visualization in progress...")
-                            except Exception as chart_error:
-                                st.warning(f"Chart generation issue: {chart_error}")
-                                # Fallback to simple bar chart
-                                if len(kpi_data.columns) >= 2:
-                                    fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
-                                    fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
-                                    st.plotly_chart(fig, use_container_width=True)
-                        else:
-                            st.info("No data available for this KPI")
-                
-                # Right column KPI
-                with col2:
-                    if i + 1 < len(kpi_names):
-                        kpi_name = kpi_names[i + 1]
-                        kpi_data = st.session_state.strategic_kpis[kpi_name]
-                        
-                        st.markdown(f"""
-                        <div class="strategic-kpi-header">
-                            <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                            <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                            with st.expander("📊 View Data Table", expanded=False):
-                                st.dataframe(kpi_data.head(20), use_container_width=True)
+                            st.markdown(f"""
+                            <div class="strategic-kpi-header">
+                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
                             
-                            # Use advanced chart visualizer
-                            try:
-                                fig = visualize_kpi(kpi_name, kpi_data)
-                                if fig:
-                                    st.plotly_chart(fig, use_container_width=True)
-                                else:
-                                    st.info("💡 Chart visualization in progress...")
-                            except Exception as chart_error:
-                                st.warning(f"Chart generation issue: {chart_error}")
-                                # Fallback to simple bar chart
-                                if len(kpi_data.columns) >= 2:
-                                    fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
-                                    fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
-                                    st.plotly_chart(fig, use_container_width=True)
-                        else:
-                            st.info("No data available for this KPI")
+                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                                with st.expander("📊 View Raw Data", expanded=False):
+                                    st.dataframe(kpi_data.head(20), use_container_width=True)
+                                
+                                try:
+                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_1")
+                                    else:
+                                        st.info("💡 Generating visualization...")
+                                except Exception as e:
+                                    if debug_mode:
+                                        st.error(f"Chart error: {e}")
+                                    if len(kpi_data.columns) >= 2:
+                                        fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
+                                        fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
+                                        st.plotly_chart(fig, use_container_width=True, key=f"fallback_{kpi_name}_1")
+                            else:
+                                st.info("⚠️ No data available for this KPI")
+                    
+                    with col2:
+                        if i + 1 < len(kpi_names):
+                            kpi_name = kpi_names[i + 1]
+                            kpi_data = st.session_state.strategic_kpis[kpi_name]
+                            
+                            st.markdown(f"""
+                            <div class="strategic-kpi-header">
+                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                                with st.expander("📊 View Raw Data", expanded=False):
+                                    st.dataframe(kpi_data.head(20), use_container_width=True)
+                                
+                                try:
+                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_2")
+                                    else:
+                                        st.info("💡 Generating visualization...")
+                                except Exception as e:
+                                    if debug_mode:
+                                        st.error(f"Chart error: {e}")
+                                    if len(kpi_data.columns) >= 2:
+                                        fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
+                                        fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
+                                        st.plotly_chart(fig, use_container_width=True, key=f"fallback_{kpi_name}_2")
+                            else:
+                                st.info("⚠️ No data available for this KPI")
+            
+            # TAB 2: KPIs 5-8
+            with tab2:
+                for i in range(4, min(8, len(kpi_names)), 2):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if i < len(kpi_names):
+                            kpi_name = kpi_names[i]
+                            kpi_data = st.session_state.strategic_kpis[kpi_name]
+                            
+                            st.markdown(f"""
+                            <div class="strategic-kpi-header">
+                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                                with st.expander("📊 View Raw Data", expanded=False):
+                                    st.dataframe(kpi_data.head(20), use_container_width=True)
+                                
+                                try:
+                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_3")
+                                except Exception as e:
+                                    if debug_mode:
+                                        st.error(f"Chart error: {e}")
+                            else:
+                                st.info("⚠️ No data available")
+                    
+                    with col2:
+                        if i + 1 < len(kpi_names):
+                            kpi_name = kpi_names[i + 1]
+                            kpi_data = st.session_state.strategic_kpis[kpi_name]
+                            
+                            st.markdown(f"""
+                            <div class="strategic-kpi-header">
+                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                                with st.expander("📊 View Raw Data", expanded=False):
+                                    st.dataframe(kpi_data.head(20), use_container_width=True)
+                                
+                                try:
+                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_4")
+                                except Exception as e:
+                                    if debug_mode:
+                                        st.error(f"Chart error: {e}")
+                            else:
+                                st.info("⚠️ No data available")
+            
+            # TAB 3: KPIs 9-12
+            with tab3:
+                for i in range(8, min(12, len(kpi_names)), 2):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if i < len(kpi_names):
+                            kpi_name = kpi_names[i]
+                            kpi_data = st.session_state.strategic_kpis[kpi_name]
+                            
+                            st.markdown(f"""
+                            <div class="strategic-kpi-header">
+                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                                with st.expander("📊 View Raw Data", expanded=False):
+                                    st.dataframe(kpi_data.head(20), use_container_width=True)
+                                
+                                try:
+                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_5")
+                                except Exception as e:
+                                    if debug_mode:
+                                        st.error(f"Chart error: {e}")
+                            else:
+                                st.info("⚠️ No data available")
+                    
+                    with col2:
+                        if i + 1 < len(kpi_names):
+                            kpi_name = kpi_names[i + 1]
+                            kpi_data = st.session_state.strategic_kpis[kpi_name]
+                            
+                            st.markdown(f"""
+                            <div class="strategic-kpi-header">
+                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                                with st.expander("📊 View Raw Data", expanded=False):
+                                    st.dataframe(kpi_data.head(20), use_container_width=True)
+                                
+                                try:
+                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_6")
+                                except Exception as e:
+                                    if debug_mode:
+                                        st.error(f"Chart error: {e}")
+                            else:
+                                st.info("⚠️ No data available")
+            
+            # TAB 4: KPIs 13-16
+            with tab4:
+                for i in range(12, len(kpi_names), 2):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if i < len(kpi_names):
+                            kpi_name = kpi_names[i]
+                            kpi_data = st.session_state.strategic_kpis[kpi_name]
+                            
+                            st.markdown(f"""
+                            <div class="strategic-kpi-header">
+                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                                with st.expander("📊 View Raw Data", expanded=False):
+                                    st.dataframe(kpi_data.head(20), use_container_width=True)
+                                
+                                try:
+                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_7")
+                                except Exception as e:
+                                    if debug_mode:
+                                        st.error(f"Chart error: {e}")
+                            else:
+                                st.info("⚠️ No data available")
+                    
+                    with col2:
+                        if i + 1 < len(kpi_names):
+                            kpi_name = kpi_names[i + 1]
+                            kpi_data = st.session_state.strategic_kpis[kpi_name]
+                            
+                            st.markdown(f"""
+                            <div class="strategic-kpi-header">
+                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                                with st.expander("📊 View Raw Data", expanded=False):
+                                    st.dataframe(kpi_data.head(20), use_container_width=True)
+                                
+                                try:
+                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    if fig:
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_8")
+                                except Exception as e:
+                                    if debug_mode:
+                                        st.error(f"Chart error: {e}")
+                            else:
+                                st.info("⚠️ No data available")
+        
         else:
             st.info("👈 Click 'Calculate 16 Strategic KPIs' in the sidebar to start advanced analysis")
             
-            st.markdown("### 🎯 Available Strategic KPIs:")
+            # Show preview cards instead of markdown table
+            st.markdown("### 🎯 Strategic KPIs Preview")
+            st.markdown("Click the button above to generate real-time analytics with interactive charts")
             
-            kpi_list = """
-            | # | KPI | Chart Type | Description |
-            |---|-----|------------|-------------|
-            | 1 | **QB Pressure** | 🔥 Heatmap | QB pressure performance matrix |
-            | 2 | **Route Efficiency** | 🕸️ Radar | Receiver route efficiency |
-            | 3 | **Coverage Heat** | 🔥 Heatmap | Defensive coverage zones |
-            | 4 | **Pass Timing** | 📊 Step | Pass timing windows |
-            | 5 | **Separation** | 🫧 Bubble | Player separation metrics |
-            | 6 | **Formation Tendency** | ☀️ Sunburst | Formation patterns |
-            | 7 | **Win Probability** | 💧 Waterfall | Win probability impact |
-            | 8 | **Defense Reaction** | 🎻 Violin | Reaction time distribution |
-            | 9 | **Red Zone Success** | ⏱️ Gauge | Red zone efficiency |
-            | 10 | **Tempo Analysis** | 📈 Time Series | Pace impact |
-            | 11 | **Movement Heat** | 🔥 Heatmap | Movement density |
-            | 12 | **Pass Results** | 🍩 Doughnut | Pass breakdown |
-            | 13 | **EP Analysis** | 💧 Waterfall | Expected Points |
-            | 14 | **Coverage Type** | 📊 Stacked Bar | Coverage effectiveness |
-            | 15 | **Speed Distribution** | 📊 Histogram | Speed analysis |
-            | 16 | **Play Action Impact** | 🔻 Funnel | Play action vs standard |
-            """
-            st.markdown(kpi_list)
+            kpi_preview = [
+                ("🔥 QB Pressure", "Heatmap", "QB pressure performance matrix"),
+                ("🕸️ Route Efficiency", "Radar", "Receiver route efficiency"),
+                ("🔥 Coverage Heat", "Heatmap", "Defensive coverage zones"),
+                ("📊 Pass Timing", "Step", "Pass timing windows"),
+                ("🫧 Separation", "Bubble", "Player separation metrics"),
+                ("☀️ Formation Tendency", "Sunburst", "Formation patterns"),
+                ("💧 Win Probability", "Waterfall", "Win probability impact"),
+                ("🎻 Defense Reaction", "Violin", "Reaction time distribution"),
+                ("⏱️ Red Zone Success", "Gauge", "Red zone efficiency"),
+                ("📈 Tempo Analysis", "Time Series", "Pace impact"),
+                ("🔥 Movement Heat", "Heatmap", "Movement density"),
+                ("🍩 Pass Results", "Doughnut", "Pass breakdown"),
+                ("💧 EP Analysis", "Waterfall", "Expected Points"),
+                ("📊 Coverage Type", "Stacked Bar", "Coverage effectiveness"),
+                ("📊 Speed Distribution", "Histogram", "Speed analysis"),
+                ("🔻 Play Action Impact", "Funnel", "Play action vs standard")
+            ]
+            
+            for i in range(0, len(kpi_preview), 4):
+                cols = st.columns(4)
+                for j, (emoji_name, chart_type, desc) in enumerate(kpi_preview[i:i+4]):
+                    with cols[j]:
+                        st.markdown(f"""
+                        <div class="kpi-card" style="min-height: 150px;">
+                            <div class="kpi-title">{emoji_name}</div>
+                            <div style="color: {COLOR_GOLD}; font-size: 14px; margin: 8px 0;">{chart_type}</div>
+                            <div class="kpi-sub">{desc}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
     
     # =======================================================
     # DATA EXPLORER
