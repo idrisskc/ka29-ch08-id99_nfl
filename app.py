@@ -119,7 +119,10 @@ try:
         load_local_data,
         get_column_info,
         detect_available_columns,
-        get_data_summary
+        get_data_summary,
+        load_from_persistent_cache,
+        save_to_persistent_cache,
+        get_cache_info
     )
     from chart_visualizer import visualize_kpi
 except ImportError as e:
@@ -330,6 +333,32 @@ if 'strategic_kpis_calculated' not in st.session_state:
 # 📊 SIDEBAR CONTROLS
 # =======================================================
 st.sidebar.header("⚙️ Dashboard Controls")
+
+# Check for cached data first
+cache_info = get_cache_info()
+if cache_info:
+    st.sidebar.markdown(f"""
+    <div class="cache-info-box">
+        <h4 style="color: #32CD32; margin: 0 0 10px 0;">💾 Cached Data Available</h4>
+        <p style="margin: 5px 0; font-size: 13px;">
+            📊 <b>{cache_info['rows']:,}</b> rows<br>
+            📁 <b>{cache_info['size_mb']:.1f} MB</b><br>
+            📅 Valid for <b>{cache_info['days_remaining']}</b> more days<br>
+            🕐 Created: {cache_info['created']}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.sidebar.button("✅ Load Cached Data", type="primary"):
+        cached_df = load_from_persistent_cache()
+        if cached_df is not None and not cached_df.empty:
+            st.session_state.full_df = cached_df
+            st.session_state.data_loaded = True
+            st.session_state.strategic_kpis_calculated = False
+            st.success(f"✅ Loaded {len(cached_df):,} rows from cache!")
+            st.rerun()
+
+st.sidebar.markdown("---")
 st.sidebar.subheader("📥 Data Source")
 
 data_source = st.sidebar.radio(
@@ -585,9 +614,13 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                                     st.dataframe(kpi_data.head(20), use_container_width=True)
                                 
                                 try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
+                                    fig = visualize_kpi(kpi_name, kpi_data, use_matplotlib=use_matplotlib)
                                     if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_1")
+                                        # Check if it's a matplotlib figure
+                                        if hasattr(fig, 'savefig'):
+                                            st.pyplot(fig, use_container_width=True, clear_figure=True)
+                                        else:
+                                            st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_1")
                                     else:
                                         st.info("💡 Generating visualization...")
                                 except Exception as e:
