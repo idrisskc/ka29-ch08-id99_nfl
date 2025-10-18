@@ -1,5 +1,6 @@
 # =======================================================
 # chart_visualizer.py - Advanced Chart Visualizations for NFL KPIs
+# WITH MATPLOTLIB SUPPORT
 # =======================================================
 import pandas as pd
 import numpy as np
@@ -7,6 +8,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for Streamlit
 
 
 # =======================================================
@@ -19,6 +23,86 @@ COLOR_GOLD = "#FFD700"
 TEXT_COLOR = "#E6EEF8"
 
 NFL_COLORS = ['#C1121F', '#FFD700', '#1E90FF', '#32CD32', '#FF6347', '#9370DB', '#FF8C00', '#4169E1']
+
+
+# =======================================================
+# 🎨 MATPLOTLIB CHART FUNCTIONS
+# =======================================================
+
+def create_matplotlib_heatmap(df, kpi_name):
+    """Create Matplotlib Heatmap with custom styling"""
+    try:
+        if len(df.columns) >= 3:
+            x_col, y_col, z_col = df.columns[0], df.columns[1], df.columns[2]
+            pivot_df = df.pivot_table(index=y_col, columns=x_col, values=z_col, aggfunc='mean')
+            
+            fig, ax = plt.subplots(figsize=(10, 6), facecolor=COLOR_BG)
+            im = ax.imshow(pivot_df.values, cmap='RdYlGn', aspect='auto')
+            
+            ax.set_xticks(np.arange(len(pivot_df.columns)))
+            ax.set_yticks(np.arange(len(pivot_df.index)))
+            ax.set_xticklabels(pivot_df.columns, rotation=45, ha='right', color=TEXT_COLOR)
+            ax.set_yticklabels(pivot_df.index, color=TEXT_COLOR)
+            
+            plt.colorbar(im, ax=ax)
+            ax.set_facecolor(COLOR_PANEL)
+            ax.set_title(f"{kpi_name} - Heatmap", color=TEXT_COLOR, fontsize=14, pad=20)
+            
+            fig.tight_layout()
+            return fig
+    except Exception as e:
+        st.error(f"Matplotlib heatmap error: {e}")
+        return None
+
+
+def create_matplotlib_radar(df, kpi_name):
+    """Create Matplotlib Radar Chart"""
+    try:
+        if len(df) > 0 and len(df.columns) >= 2:
+            top_data = df.head(6)
+            categories = top_data[top_data.columns[0]].tolist()
+            values = top_data[top_data.columns[1]].tolist()
+            
+            angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
+            values += values[:1]
+            angles += angles[:1]
+            
+            fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection='polar'), facecolor=COLOR_BG)
+            ax.plot(angles, values, 'o-', linewidth=2, color=COLOR_ACCENT)
+            ax.fill(angles, values, alpha=0.25, color=COLOR_ACCENT)
+            ax.set_xticks(angles[:-1])
+            ax.set_xticklabels(categories, color=TEXT_COLOR)
+            ax.set_facecolor(COLOR_PANEL)
+            ax.set_title(f"{kpi_name} - Radar", color=TEXT_COLOR, y=1.08, fontsize=14)
+            ax.grid(True, color='gray', alpha=0.3)
+            
+            return fig
+    except Exception as e:
+        st.error(f"Matplotlib radar error: {e}")
+        return None
+
+
+def create_matplotlib_distribution(df, kpi_name):
+    """Create Matplotlib Distribution Plot"""
+    try:
+        numeric_cols = df.select_dtypes(include=[np.number]).columns
+        if len(numeric_cols) > 0:
+            col = numeric_cols[0]
+            
+            fig, ax = plt.subplots(figsize=(10, 6), facecolor=COLOR_BG)
+            ax.hist(df[col].dropna(), bins=30, color=COLOR_ACCENT, edgecolor='black', alpha=0.7)
+            ax.set_xlabel(col, color=TEXT_COLOR, fontsize=12)
+            ax.set_ylabel('Frequency', color=TEXT_COLOR, fontsize=12)
+            ax.set_title(f"{kpi_name} - Distribution", color=TEXT_COLOR, fontsize=14, pad=20)
+            ax.set_facecolor(COLOR_PANEL)
+            ax.tick_params(colors=TEXT_COLOR)
+            ax.grid(True, alpha=0.3, color='gray')
+            
+            fig.tight_layout()
+            return fig
+    except Exception as e:
+        st.error(f"Matplotlib distribution error: {e}")
+        return None
 
 
 # =======================================================
@@ -439,9 +523,10 @@ def create_step_chart(df, kpi_name):
 # 🎯 MASTER CHART ROUTER
 # =======================================================
 
-def visualize_kpi(kpi_name, kpi_data, chart_type_hint=None):
+def visualize_kpi(kpi_name, kpi_data, chart_type_hint=None, use_matplotlib=False):
     """
     Route KPI data to appropriate visualization
+    Can use Plotly or Matplotlib
     """
     if kpi_data is None or (isinstance(kpi_data, pd.DataFrame) and kpi_data.empty):
         st.warning(f"No data available for {kpi_name}")
@@ -450,6 +535,16 @@ def visualize_kpi(kpi_name, kpi_data, chart_type_hint=None):
     # Determine chart type based on KPI name or hint
     kpi_lower = kpi_name.lower()
     
+    # Use Matplotlib for some charts if requested
+    if use_matplotlib:
+        if 'heat' in kpi_lower or 'coverage' in kpi_lower:
+            return create_matplotlib_heatmap(kpi_data, kpi_name)
+        elif 'route' in kpi_lower or 'efficiency' in kpi_lower:
+            return create_matplotlib_radar(kpi_data, kpi_name)
+        elif 'distribution' in kpi_lower or 'speed' in kpi_lower:
+            return create_matplotlib_distribution(kpi_data, kpi_name)
+    
+    # Default to Plotly charts
     if 'heat' in kpi_lower or 'coverage' in kpi_lower:
         return create_heatmap_chart(kpi_data, kpi_name)
     
