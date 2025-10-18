@@ -102,6 +102,9 @@ if debug_mode:
             st.error(f"❌ Unexpected error: {e}")
             st.stop()
 
+# =======================================================
+# 📦 IMPORTS PRINCIPAUX
+# =======================================================
 import pandas as pd
 import numpy as np
 import plotly.express as px
@@ -116,10 +119,7 @@ try:
         load_local_data,
         get_column_info,
         detect_available_columns,
-        get_data_summary,
-        load_from_persistent_cache,
-        save_to_persistent_cache,
-        get_cache_info
+        get_data_summary
     )
     from chart_visualizer import visualize_kpi
 except ImportError as e:
@@ -188,7 +188,7 @@ st.set_page_config(
 )
 
 # =======================================================
-# 🎨 CUSTOM CSS (Enhanced with border-radius)
+# 🎨 CUSTOM CSS
 # =======================================================
 st.markdown(f"""
 <style>
@@ -200,81 +200,16 @@ st.markdown(f"""
     background: linear-gradient(180deg, {COLOR_PANEL}, #0b0c10);
     border-right: 1px solid rgba(255,255,255,0.1);
     padding: 1.5rem;
-    border-radius: 0 15px 15px 0;
 }}
 .kpi-card {{
     background: linear-gradient(135deg, rgba(193,18,31,0.1), rgba(27,38,59,0.3));
     border: 1px solid rgba(255,215,0,0.2);
-    border-radius: 16px;
+    border-radius: 12px;
     padding: 20px;
     margin-bottom: 16px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-    transition: all 0.3s ease;
+    transition: transform 0.2s;
 }}
-.kpi-card:hover {{
-    transform: translateY(-3px);
-    border-color: rgba(255,215,0,0.5);
-    box-shadow: 0 6px 20px rgba(255,215,0,0.2);
-}}
-.kpi-title {{ 
-    color: {COLOR_SILVER}; 
-    font-size: 13px; 
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px; 
-}}
-.kpi-value {{ 
-    font-size: 32px; 
-    font-weight: 700; 
-    color: {COLOR_GOLD}; 
-    margin-bottom: 4px;
-}}
-.kpi-sub {{ 
-    color: rgba(255,255,255,0.5); 
-    font-size: 11px; 
-}}
-.strategic-kpi-header {{
-    background: linear-gradient(90deg, rgba(193,18,31,0.3), transparent);
-    border-left: 4px solid {COLOR_GOLD};
-    padding: 12px 18px;
-    margin: 10px 0;
-    border-radius: 8px;
-}}
-.stTabs [data-baseweb="tab-list"] {{
-    gap: 8px;
-}}
-.stTabs [data-baseweb="tab"] {{
-    border-radius: 10px;
-    padding: 10px 20px;
-    background-color: {COLOR_PANEL};
-    transition: all 0.3s;
-}}
-.stTabs [data-baseweb="tab"]:hover {{
-    background-color: rgba(193,18,31,0.3);
-}}
-.stTabs [aria-selected="true"] {{
-    background-color: {COLOR_ACCENT} !important;
-    border-radius: 10px;
-}}
-.stExpander {{
-    border-radius: 10px;
-    border: 1px solid rgba(255,215,0,0.2);
-}}
-div[data-testid="stMetricValue"] {{
-    font-size: 28px;
-    color: {COLOR_GOLD};
-}}
-.cache-info-box {{
-    background: linear-gradient(135deg, rgba(50,205,50,0.1), rgba(27,38,59,0.3));
-    border: 1px solid rgba(50,205,50,0.3);
-    border-radius: 12px;
-    padding: 15px;
-    margin: 10px 0;
-}}
-</style>
-""", unsafe_allow_html=True)
-
 .kpi-card:hover {{
     transform: translateY(-2px);
     border-color: rgba(255,215,0,0.4);
@@ -330,32 +265,6 @@ if 'strategic_kpis_calculated' not in st.session_state:
 # 📊 SIDEBAR CONTROLS
 # =======================================================
 st.sidebar.header("⚙️ Dashboard Controls")
-
-# Check for cached data first
-cache_info = get_cache_info()
-if cache_info:
-    st.sidebar.markdown(f"""
-    <div class="cache-info-box">
-        <h4 style="color: #32CD32; margin: 0 0 10px 0;">💾 Cached Data Available</h4>
-        <p style="margin: 5px 0; font-size: 13px;">
-            📊 <b>{cache_info['rows']:,}</b> rows<br>
-            📁 <b>{cache_info['size_mb']:.1f} MB</b><br>
-            📅 Valid for <b>{cache_info['days_remaining']}</b> more days<br>
-            🕐 Created: {cache_info['created']}
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if st.sidebar.button("✅ Load Cached Data", type="primary"):
-        cached_df = load_from_persistent_cache()
-        if cached_df is not None and not cached_df.empty:
-            st.session_state.full_df = cached_df
-            st.session_state.data_loaded = True
-            st.session_state.strategic_kpis_calculated = False
-            st.success(f"✅ Loaded {len(cached_df):,} rows from cache!")
-            st.rerun()
-
-st.sidebar.markdown("---")
 st.sidebar.subheader("📥 Data Source")
 
 data_source = st.sidebar.radio(
@@ -611,13 +520,9 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                                     st.dataframe(kpi_data.head(20), use_container_width=True)
                                 
                                 try:
-                                    fig = visualize_kpi(kpi_name, kpi_data, use_matplotlib=use_matplotlib)
+                                    fig = visualize_kpi(kpi_name, kpi_data)
                                     if fig:
-                                        # Check if it's a matplotlib figure
-                                        if hasattr(fig, 'savefig'):
-                                            st.pyplot(fig, use_container_width=True, clear_figure=True)
-                                        else:
-                                            st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_1")
+                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_1")
                                     else:
                                         st.info("💡 Generating visualization...")
                                 except Exception as e:
