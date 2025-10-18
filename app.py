@@ -121,9 +121,10 @@ try:
         detect_available_columns,
         get_data_summary
     )
+    from chart_visualizer import visualize_kpi
 except ImportError as e:
-    st.error(f"❌ Error importing utils.py: {str(e)}")
-    st.info("Make sure utils.py is in the same directory as app.py")
+    st.error(f"❌ Error importing modules: {str(e)}")
+    st.info("Make sure utils.py and chart_visualizer.py are in the same directory as app.py")
     st.info("Enable 'Show Debug Info' in sidebar for more details")
     st.stop()
 
@@ -510,23 +511,20 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                             with st.expander("📊 View Data Table", expanded=False):
                                 st.dataframe(kpi_data.head(20), use_container_width=True)
                             
-                            # Auto-generate chart
+                            # Use advanced chart visualizer
                             try:
+                                fig = visualize_kpi(kpi_name, kpi_data)
+                                if fig:
+                                    st.plotly_chart(fig, use_container_width=True)
+                                else:
+                                    st.info("💡 Chart visualization in progress...")
+                            except Exception as chart_error:
+                                st.warning(f"Chart generation issue: {chart_error}")
+                                # Fallback to simple bar chart
                                 if len(kpi_data.columns) >= 2:
-                                    x_col = kpi_data.columns[0]
-                                    y_col = kpi_data.columns[1]
-                                    
-                                    if 'heat' in kpi_name.lower() or 'coverage' in kpi_name.lower():
-                                        fig = px.density_heatmap(kpi_data.head(50), x=x_col, y=y_col, template="plotly_dark")
-                                    elif 'distribution' in kpi_name.lower():
-                                        fig = px.histogram(kpi_data.head(50), x=x_col, template="plotly_dark")
-                                    else:
-                                        fig = px.bar(kpi_data.head(10), x=x_col, y=y_col, template="plotly_dark")
-                                    
+                                    fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
                                     fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
                                     st.plotly_chart(fig, use_container_width=True)
-                            except:
-                                st.info("Chart visualization not available for this KPI format")
                         else:
                             st.info("No data available for this KPI")
                 
@@ -547,22 +545,20 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                             with st.expander("📊 View Data Table", expanded=False):
                                 st.dataframe(kpi_data.head(20), use_container_width=True)
                             
+                            # Use advanced chart visualizer
                             try:
+                                fig = visualize_kpi(kpi_name, kpi_data)
+                                if fig:
+                                    st.plotly_chart(fig, use_container_width=True)
+                                else:
+                                    st.info("💡 Chart visualization in progress...")
+                            except Exception as chart_error:
+                                st.warning(f"Chart generation issue: {chart_error}")
+                                # Fallback to simple bar chart
                                 if len(kpi_data.columns) >= 2:
-                                    x_col = kpi_data.columns[0]
-                                    y_col = kpi_data.columns[1]
-                                    
-                                    if 'heat' in kpi_name.lower() or 'coverage' in kpi_name.lower():
-                                        fig = px.density_heatmap(kpi_data.head(50), x=x_col, y=y_col, template="plotly_dark")
-                                    elif 'distribution' in kpi_name.lower():
-                                        fig = px.histogram(kpi_data.head(50), x=x_col, template="plotly_dark")
-                                    else:
-                                        fig = px.bar(kpi_data.head(10), x=x_col, y=y_col, template="plotly_dark")
-                                    
+                                    fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
                                     fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
                                     st.plotly_chart(fig, use_container_width=True)
-                            except:
-                                st.info("Chart visualization not available for this KPI format")
                         else:
                             st.info("No data available for this KPI")
         else:
