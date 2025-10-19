@@ -1,5 +1,5 @@
 # =======================================================
-# app.py - NFL Big Data Bowl 2026 Dashboard (COMPLETE V3)
+# app.py - NFL Big Data Bowl 2026 Dashboard (COMPLETE OPTIMIZED)
 # =======================================================
 
 import sys
@@ -56,6 +56,11 @@ if debug_mode:
             else:
                 st.error("❌ utils.py NOT FOUND")
                 st.stop()
+                
+            if 'chart_visualizer.py' in files:
+                st.success("✅ chart_visualizer.py found")
+            else:
+                st.warning("⚠️ chart_visualizer.py NOT FOUND (optional)")
         except Exception as e:
             st.error(f"❌ Error listing files: {e}")
         
@@ -140,41 +145,41 @@ TEXT_COLOR = "#E6EEF8"
 
 # Chart type recommendations for each KPI
 CHART_RECOMMENDATIONS = {
-    'QB_Pressure': '🔥 Heatmap',
+    'QB_Pressure': '🔥 Heatmap / Box Plot',
     'Route_Efficiency': '🕸️ Radar Chart',
-    'Coverage_Heat': '🔥 Heatmap',
-    'Pass_Timing': '📊 Step Chart',
-    'Separation': '🫧 Bubble Chart',
+    'Coverage_Heat': '🔥 NFL Field Heatmap',
+    'Pass_Timing': '📊 Step Chart / Bar',
+    'Separation': '🫧 3D Scatter / Bubble',
     'Formation_Tendency': '☀️ Sunburst',
     'Win_Probability': '💧 Waterfall',
     'Defense_Reaction': '🎻 Violin Plot',
-    'RedZone_Success': '⏱️ Gauge',
-    'Tempo_Analysis': '📈 Time Series',
-    'Movement_Heat': '🔥 Heatmap',
-    'Pass_Results': '🍩 Doughnut',
+    'RedZone_Success': '⏱️ Gauge Chart',
+    'Tempo_Analysis': '📈 Bar Chart',
+    'Movement_Heat': '🔥 NFL Field Heatmap',
+    'Pass_Results': '🍩 Doughnut Chart',
     'EP_Analysis': '💧 Waterfall',
     'Coverage_Type': '📊 Stacked Bar',
     'Speed_Distribution': '📊 Histogram',
-    'PlayAction_Impact': '🔻 Funnel'
+    'PlayAction_Impact': '🔻 Funnel Chart'
 }
 
 KPI_DESCRIPTIONS = {
-    'QB_Pressure': 'Quarterback pressure performance matrix',
-    'Route_Efficiency': 'Receiver route running efficiency analysis',
-    'Coverage_Heat': 'Defensive coverage vulnerability zones',
-    'Pass_Timing': 'Pass timing window optimization',
-    'Separation': 'Player separation metrics (offense vs defense)',
-    'Formation_Tendency': 'Offensive formation tendency patterns',
-    'Win_Probability': 'Win probability impact by play',
-    'Defense_Reaction': 'Defensive reaction time distribution',
-    'RedZone_Success': 'Red zone conversion efficiency',
-    'Tempo_Analysis': 'Pace and tempo impact analysis',
-    'Movement_Heat': 'Player movement density heatmap',
-    'Pass_Results': 'Pass completion/incompletion breakdown',
-    'EP_Analysis': 'Expected Points Added (EPA) analysis',
-    'Coverage_Type': 'Coverage scheme effectiveness',
-    'Speed_Distribution': 'Player speed distribution analysis',
-    'PlayAction_Impact': 'Play action vs standard dropback impact'
+    'QB_Pressure': 'Quarterback pressure performance by field position with speed/acceleration metrics',
+    'Route_Efficiency': 'Receiver route efficiency: depth, lateral movement, speed optimization',
+    'Coverage_Heat': 'Defensive coverage density on NFL field (120x53.3 yards) - hotspot visualization',
+    'Pass_Timing': 'Pass timing windows: snap to release with pressure indicators',
+    'Separation': 'Real-time receiver separation from nearest defender with 3D field visualization',
+    'Formation_Tendency': 'Offensive formation distribution and success patterns',
+    'Win_Probability': 'Win probability impact analysis by play situation',
+    'Defense_Reaction': 'Defensive reaction time distribution by position',
+    'RedZone_Success': 'Red zone conversion efficiency by yard line (0-20 yards)',
+    'Tempo_Analysis': 'Offensive tempo and pace impact on success rate',
+    'Movement_Heat': 'Player movement intensity heatmap with speed/acceleration overlay',
+    'Pass_Results': 'Complete/Incomplete/Interception breakdown analysis',
+    'EP_Analysis': 'Expected Points Added (EPA) statistical breakdown',
+    'Coverage_Type': 'Man vs Zone coverage effectiveness comparison',
+    'Speed_Distribution': 'Player speed distribution analysis by range',
+    'PlayAction_Impact': 'Play action vs standard dropback success comparison'
 }
 
 # =======================================================
@@ -239,14 +244,21 @@ st.markdown(f"""
     margin: 10px 0;
     border-radius: 4px;
 }}
+.field-marker {{
+    background: rgba(50, 205, 50, 0.1);
+    border-left: 3px solid #32CD32;
+    padding: 8px 12px;
+    margin: 5px 0;
+    border-radius: 4px;
+}}
 </style>
 """, unsafe_allow_html=True)
 
 # =======================================================
 # 🏈 HEADER
 # =======================================================
-st.title("🏈 NFL Big Data Bowl 2026")
-st.markdown("_Advanced analytics dashboard with 16 strategic KPIs + comprehensive charts_")
+st.title("🏈 NFL Big Data Bowl 2026 - Advanced Analytics")
+st.markdown("_Professional-grade analytics with 16 strategic KPIs + NFL field visualizations_")
 st.markdown("---")
 
 # =======================================================
@@ -488,6 +500,20 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
         if st.session_state.strategic_kpis_calculated and st.session_state.strategic_kpis:
             st.success(f"✅ {len(st.session_state.strategic_kpis)} Strategic KPIs calculated successfully!")
             
+            # NFL Field Reference
+            with st.expander("🏈 NFL Field Reference Guide"):
+                st.markdown("""
+                <div class="field-marker">
+                <strong>NFL Field Dimensions:</strong>
+                <ul>
+                <li>Length: 120 yards (0 = Own Goal Line, 100 = Opponent Goal Line, 100-120 = End Zone)</li>
+                <li>Width: 53.3 yards (sideline to sideline)</li>
+                <li>Red Zone: 20 yards from goal line (yards 100-120)</li>
+                <li>Hash Marks: 18.5 feet apart (centered on field)</li>
+                </ul>
+                </div>
+                """, unsafe_allow_html=True)
+            
             # Create tabs for better organization
             tab1, tab2, tab3, tab4 = st.tabs([
                 "🔥 Performance Analytics (1-4)", 
@@ -498,270 +524,105 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
             
             kpi_names = list(st.session_state.strategic_kpis.keys())
             
+            # Helper function to render KPI
+            def render_kpi(kpi_name, kpi_data, col, key_suffix):
+                with col:
+                    st.markdown(f"""
+                    <div class="strategic-kpi-header">
+                        <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
+                        <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
+                        with st.expander("📊 View Raw Data", expanded=False):
+                            st.dataframe(kpi_data.head(20), use_container_width=True)
+                        
+                        try:
+                            fig = visualize_kpi(kpi_name, kpi_data)
+                            if fig:
+                                st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_{key_suffix}")
+                            else:
+                                st.info("💡 Visualization not available for this data structure")
+                        except Exception as e:
+                            if debug_mode:
+                                st.error(f"Chart error: {e}")
+                            # Fallback simple chart
+                            if len(kpi_data.columns) >= 2:
+                                fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
+                                fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
+                                st.plotly_chart(fig, use_container_width=True, key=f"fallback_{kpi_name}_{key_suffix}")
+                    else:
+                        st.info("⚠️ No data available for this KPI")
+            
             # TAB 1: KPIs 1-4
             with tab1:
                 for i in range(0, min(4, len(kpi_names)), 2):
                     col1, col2 = st.columns(2)
                     
-                    with col1:
-                        if i < len(kpi_names):
-                            kpi_name = kpi_names[i]
-                            kpi_data = st.session_state.strategic_kpis[kpi_name]
-                            
-                            st.markdown(f"""
-                            <div class="strategic-kpi-header">
-                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                                with st.expander("📊 View Raw Data", expanded=False):
-                                    st.dataframe(kpi_data.head(20), use_container_width=True)
-                                
-                                try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
-                                    if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_1")
-                                    else:
-                                        st.info("💡 Generating visualization...")
-                                except Exception as e:
-                                    if debug_mode:
-                                        st.error(f"Chart error: {e}")
-                                    if len(kpi_data.columns) >= 2:
-                                        fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
-                                        fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
-                                        st.plotly_chart(fig, use_container_width=True, key=f"fallback_{kpi_name}_1")
-                            else:
-                                st.info("⚠️ No data available for this KPI")
+                    if i < len(kpi_names):
+                        render_kpi(kpi_names[i], st.session_state.strategic_kpis[kpi_names[i]], col1, "tab1_1")
                     
-                    with col2:
-                        if i + 1 < len(kpi_names):
-                            kpi_name = kpi_names[i + 1]
-                            kpi_data = st.session_state.strategic_kpis[kpi_name]
-                            
-                            st.markdown(f"""
-                            <div class="strategic-kpi-header">
-                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                                with st.expander("📊 View Raw Data", expanded=False):
-                                    st.dataframe(kpi_data.head(20), use_container_width=True)
-                                
-                                try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
-                                    if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_2")
-                                    else:
-                                        st.info("💡 Generating visualization...")
-                                except Exception as e:
-                                    if debug_mode:
-                                        st.error(f"Chart error: {e}")
-                                    if len(kpi_data.columns) >= 2:
-                                        fig = px.bar(kpi_data.head(10), x=kpi_data.columns[0], y=kpi_data.columns[1], template="plotly_dark")
-                                        fig.update_layout(paper_bgcolor=COLOR_BG, plot_bgcolor=COLOR_PANEL, font_color=TEXT_COLOR, height=350)
-                                        st.plotly_chart(fig, use_container_width=True, key=f"fallback_{kpi_name}_2")
-                            else:
-                                st.info("⚠️ No data available for this KPI")
+                    if i + 1 < len(kpi_names):
+                        render_kpi(kpi_names[i + 1], st.session_state.strategic_kpis[kpi_names[i + 1]], col2, "tab1_2")
             
             # TAB 2: KPIs 5-8
             with tab2:
                 for i in range(4, min(8, len(kpi_names)), 2):
                     col1, col2 = st.columns(2)
                     
-                    with col1:
-                        if i < len(kpi_names):
-                            kpi_name = kpi_names[i]
-                            kpi_data = st.session_state.strategic_kpis[kpi_name]
-                            
-                            st.markdown(f"""
-                            <div class="strategic-kpi-header">
-                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                                with st.expander("📊 View Raw Data", expanded=False):
-                                    st.dataframe(kpi_data.head(20), use_container_width=True)
-                                
-                                try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
-                                    if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_3")
-                                except Exception as e:
-                                    if debug_mode:
-                                        st.error(f"Chart error: {e}")
-                            else:
-                                st.info("⚠️ No data available")
+                    if i < len(kpi_names):
+                        render_kpi(kpi_names[i], st.session_state.strategic_kpis[kpi_names[i]], col1, "tab2_1")
                     
-                    with col2:
-                        if i + 1 < len(kpi_names):
-                            kpi_name = kpi_names[i + 1]
-                            kpi_data = st.session_state.strategic_kpis[kpi_name]
-                            
-                            st.markdown(f"""
-                            <div class="strategic-kpi-header">
-                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                                with st.expander("📊 View Raw Data", expanded=False):
-                                    st.dataframe(kpi_data.head(20), use_container_width=True)
-                                
-                                try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
-                                    if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_4")
-                                except Exception as e:
-                                    if debug_mode:
-                                        st.error(f"Chart error: {e}")
-                            else:
-                                st.info("⚠️ No data available")
+                    if i + 1 < len(kpi_names):
+                        render_kpi(kpi_names[i + 1], st.session_state.strategic_kpis[kpi_names[i + 1]], col2, "tab2_2")
             
             # TAB 3: KPIs 9-12
             with tab3:
                 for i in range(8, min(12, len(kpi_names)), 2):
                     col1, col2 = st.columns(2)
                     
-                    with col1:
-                        if i < len(kpi_names):
-                            kpi_name = kpi_names[i]
-                            kpi_data = st.session_state.strategic_kpis[kpi_name]
-                            
-                            st.markdown(f"""
-                            <div class="strategic-kpi-header">
-                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                                with st.expander("📊 View Raw Data", expanded=False):
-                                    st.dataframe(kpi_data.head(20), use_container_width=True)
-                                
-                                try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
-                                    if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_5")
-                                except Exception as e:
-                                    if debug_mode:
-                                        st.error(f"Chart error: {e}")
-                            else:
-                                st.info("⚠️ No data available")
+                    if i < len(kpi_names):
+                        render_kpi(kpi_names[i], st.session_state.strategic_kpis[kpi_names[i]], col1, "tab3_1")
                     
-                    with col2:
-                        if i + 1 < len(kpi_names):
-                            kpi_name = kpi_names[i + 1]
-                            kpi_data = st.session_state.strategic_kpis[kpi_name]
-                            
-                            st.markdown(f"""
-                            <div class="strategic-kpi-header">
-                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                                with st.expander("📊 View Raw Data", expanded=False):
-                                    st.dataframe(kpi_data.head(20), use_container_width=True)
-                                
-                                try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
-                                    if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_6")
-                                except Exception as e:
-                                    if debug_mode:
-                                        st.error(f"Chart error: {e}")
-                            else:
-                                st.info("⚠️ No data available")
+                    if i + 1 < len(kpi_names):
+                        render_kpi(kpi_names[i + 1], st.session_state.strategic_kpis[kpi_names[i + 1]], col2, "tab3_2")
             
             # TAB 4: KPIs 13-16
             with tab4:
                 for i in range(12, len(kpi_names), 2):
                     col1, col2 = st.columns(2)
                     
-                    with col1:
-                        if i < len(kpi_names):
-                            kpi_name = kpi_names[i]
-                            kpi_data = st.session_state.strategic_kpis[kpi_name]
-                            
-                            st.markdown(f"""
-                            <div class="strategic-kpi-header">
-                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                                with st.expander("📊 View Raw Data", expanded=False):
-                                    st.dataframe(kpi_data.head(20), use_container_width=True)
-                                
-                                try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
-                                    if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_7")
-                                except Exception as e:
-                                    if debug_mode:
-                                        st.error(f"Chart error: {e}")
-                            else:
-                                st.info("⚠️ No data available")
+                    if i < len(kpi_names):
+                        render_kpi(kpi_names[i], st.session_state.strategic_kpis[kpi_names[i]], col1, "tab4_1")
                     
-                    with col2:
-                        if i + 1 < len(kpi_names):
-                            kpi_name = kpi_names[i + 1]
-                            kpi_data = st.session_state.strategic_kpis[kpi_name]
-                            
-                            st.markdown(f"""
-                            <div class="strategic-kpi-header">
-                                <h3>{CHART_RECOMMENDATIONS.get(kpi_name, '📊')} {kpi_name.replace('_', ' ').title()}</h3>
-                                <p style="margin:0; font-size:0.9em; color: {COLOR_SILVER};">{KPI_DESCRIPTIONS.get(kpi_name, '')}</p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            if isinstance(kpi_data, pd.DataFrame) and not kpi_data.empty:
-                                with st.expander("📊 View Raw Data", expanded=False):
-                                    st.dataframe(kpi_data.head(20), use_container_width=True)
-                                
-                                try:
-                                    fig = visualize_kpi(kpi_name, kpi_data)
-                                    if fig:
-                                        st.plotly_chart(fig, use_container_width=True, key=f"chart_{kpi_name}_8")
-                                except Exception as e:
-                                    if debug_mode:
-                                        st.error(f"Chart error: {e}")
-                            else:
-                                st.info("⚠️ No data available")
+                    if i + 1 < len(kpi_names):
+                        render_kpi(kpi_names[i + 1], st.session_state.strategic_kpis[kpi_names[i + 1]], col2, "tab4_2")
         
         else:
             st.info("👈 Click 'Calculate 16 Strategic KPIs' in the sidebar to start advanced analysis")
             
-            # Show preview cards instead of markdown table
+            # Show preview cards
             st.markdown("### 🎯 Strategic KPIs Preview")
-            st.markdown("Click the button above to generate real-time analytics with interactive charts")
+            st.markdown("Click the button above to generate real-time analytics with interactive NFL field visualizations")
             
             kpi_preview = [
-                ("🔥 QB Pressure", "Heatmap", "QB pressure performance matrix"),
-                ("🕸️ Route Efficiency", "Radar", "Receiver route efficiency"),
-                ("🔥 Coverage Heat", "Heatmap", "Defensive coverage zones"),
-                ("📊 Pass Timing", "Step", "Pass timing windows"),
-                ("🫧 Separation", "Bubble", "Player separation metrics"),
-                ("☀️ Formation Tendency", "Sunburst", "Formation patterns"),
-                ("💧 Win Probability", "Waterfall", "Win probability impact"),
-                ("🎻 Defense Reaction", "Violin", "Reaction time distribution"),
-                ("⏱️ Red Zone Success", "Gauge", "Red zone efficiency"),
-                ("📈 Tempo Analysis", "Time Series", "Pace impact"),
-                ("🔥 Movement Heat", "Heatmap", "Movement density"),
-                ("🍩 Pass Results", "Doughnut", "Pass breakdown"),
-                ("💧 EP Analysis", "Waterfall", "Expected Points"),
-                ("📊 Coverage Type", "Stacked Bar", "Coverage effectiveness"),
-                ("📊 Speed Distribution", "Histogram", "Speed analysis"),
-                ("🔻 Play Action Impact", "Funnel", "Play action vs standard")
+                ("🔥 QB Pressure", "Heatmap/Box", "Pressure performance by field position"),
+                ("🕸️ Route Efficiency", "Radar", "Route depth & lateral movement"),
+                ("🔥 Coverage Heat", "NFL Field", "120x53.3 yard coverage heatmap"),
+                ("📊 Pass Timing", "Step Chart", "Snap to release timing windows"),
+                ("🫧 Separation", "3D Scatter", "Real-time receiver separation"),
+                ("☀️ Formation", "Sunburst", "Formation distribution patterns"),
+                ("💧 Win Probability", "Waterfall", "WP impact by situation"),
+                ("🎻 Defense Reaction", "Violin", "Reaction time by position"),
+                ("⏱️ Red Zone", "Gauge", "Success rate by yard line"),
+                ("📈 Tempo", "Bar Chart", "Pace impact analysis"),
+                ("🔥 Movement", "NFL Field", "Movement density heatmap"),
+                ("🍩 Pass Results", "Doughnut", "Complete/Incomplete breakdown"),
+                ("💧 EPA", "Waterfall", "Expected Points Added"),
+                ("📊 Coverage Type", "Stacked", "Man vs Zone effectiveness"),
+                ("📊 Speed Dist", "Histogram", "Speed range distribution"),
+                ("🔻 Play Action", "Funnel", "PA vs standard comparison")
             ]
             
             for i in range(0, len(kpi_preview), 4):
@@ -802,7 +663,7 @@ else:
     st.info("👈 **Get Started:** Use the sidebar to load your NFL data")
     
     st.markdown("""
-    ### 🏈 Welcome to NFL Big Data Bowl 2026 Dashboard
+    ### 🏈 Welcome to NFL Big Data Bowl 2026 - Professional Analytics Dashboard
     
     #### 📥 How to Load Data:
     
@@ -812,26 +673,59 @@ else:
     - Click "Load Data from Kaggle"
     
     **Option 2: Upload CSV**
-    - Upload your CSV files from Kaggle
+    - Upload your CSV files from the competition
     
     **Option 3: Local Directory**
     - Specify path to your data folder
     
     #### 📊 Features:
-    - **14+ Basic KPIs** - Quick performance metrics
-    - **16 Strategic KPIs** - Advanced football intelligence:
-      - QB Pressure Analysis
-      - Route Efficiency
-      - Coverage Vulnerability
-      - Win Probability Impact
-      - And 12 more advanced metrics!
-    - **Multiple Chart Types** - Bar, Line, Area, Scatter, Heatmap, etc.
-    - **Interactive Visualizations** - Powered by Plotly
-    - **Data Explorer** - Browse and analyze your data
     
-    #### 🎯 Two Analysis Modes:
-    1. **Basic KPIs** - Fast overview (14+ metrics)
-    2. **Strategic KPIs** - Deep dive (16 advanced analytics with chart recommendations)
+    **🎯 Basic KPIs (14+ Metrics)**
+    - Quick performance overview
+    - Speed, acceleration, position metrics
+    - Expected points analysis
+    - Player and play statistics
+    
+    **🧠 Strategic KPIs (16 Advanced Metrics)**
+    1. **QB Pressure Analysis** - Pressure performance by field position
+    2. **Route Efficiency** - Route depth, lateral movement optimization
+    3. **Coverage Heat** - NFL field heatmap (120x53.3 yards)
+    4. **Pass Timing** - Snap to release with pressure indicators
+    5. **Player Separation** - Real-time 3D separation analysis
+    6. **Formation Tendencies** - Formation distribution patterns
+    7. **Win Probability** - WP impact by play situation
+    8. **Defense Reaction** - Reaction time by position
+    9. **Red Zone Success** - Conversion efficiency by yard line
+    10. **Tempo Analysis** - Offensive pace impact
+    11. **Movement Heatmap** - Movement density with speed overlay
+    12. **Pass Results** - Complete/Incomplete/INT breakdown
+    13. **EPA Analysis** - Expected Points Added statistics
+    14. **Coverage Type** - Man vs Zone effectiveness
+    15. **Speed Distribution** - Player speed range analysis
+    16. **Play Action Impact** - PA vs standard dropback comparison
+    
+    #### 🎨 Visualization Types:
+    - **NFL Field Heatmaps** - 120x53.3 yard field with hotspot analysis
+    - **3D Scatter Plots** - Separation analysis on field
+    - **Radar Charts** - Route efficiency metrics
+    - **Gauge Charts** - Red zone success rates
+    - **Violin Plots** - Reaction time distributions
+    - **Waterfall Charts** - Win probability & EPA
+    - **Sunburst Charts** - Formation hierarchies
+    - **And many more...**
+    
+    #### 🚀 Getting Started:
+    1. Load your data using the sidebar
+    2. Choose "Basic KPIs" for quick overview
+    3. Select "Strategic KPIs" for deep dive analysis
+    4. Explore interactive visualizations
+    5. View raw data in expandable sections
+    
+    #### 💡 Pro Tips:
+    - Enable debug mode to troubleshoot issues
+    - Use NFL Field Reference Guide for dimension context
+    - Hover over charts for detailed information
+    - Download charts using Plotly's built-in tools
     """)
 
 # =======================================================
@@ -839,4 +733,5 @@ else:
 # =======================================================
 st.sidebar.markdown("---")
 st.sidebar.markdown("**NFL Big Data Bowl 2026**")
-st.sidebar.caption("v3.0 - Complete Analytics Dashboard with 16 Strategic KPIs")
+st.sidebar.caption("v4.0 - Professional Analytics with NFL Field Visualizations")
+st.sidebar.caption("Optimized for data analysts & football strategists")
