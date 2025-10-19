@@ -149,7 +149,7 @@ CHART_RECOMMENDATIONS = {
     'Route_Efficiency': '🕸️ Radar Chart',
     'Coverage_Heat': '🔥 NFL Field Heatmap',
     'Pass_Timing': '📊 Step Chart / Bar',
-    'Separation': '🫧 3D Scatter / Bubble',
+    'Separation': '🫧 2D Scatter Plot',
     'Formation_Tendency': '☀️ Sunburst',
     'Win_Probability': '💧 Waterfall',
     'Defense_Reaction': '🎻 Violin Plot',
@@ -168,7 +168,7 @@ KPI_DESCRIPTIONS = {
     'Route_Efficiency': 'Receiver route efficiency: depth, lateral movement, speed optimization',
     'Coverage_Heat': 'Defensive coverage density on NFL field (120x53.3 yards) - hotspot visualization',
     'Pass_Timing': 'Pass timing windows: snap to release with pressure indicators',
-    'Separation': 'Real-time receiver separation from nearest defender with 3D field visualization',
+    'Separation': 'Real-time receiver separation from nearest defender with 2D field visualization',
     'Formation_Tendency': 'Offensive formation distribution and success patterns',
     'Win_Probability': 'Win probability impact analysis by play situation',
     'Defense_Reaction': 'Defensive reaction time distribution by position',
@@ -611,7 +611,7 @@ if st.session_state.data_loaded and not st.session_state.full_df.empty:
                 ("🕸️ Route Efficiency", "Radar", "Route depth & lateral movement"),
                 ("🔥 Coverage Heat", "NFL Field", "120x53.3 yard coverage heatmap"),
                 ("📊 Pass Timing", "Step Chart", "Snap to release timing windows"),
-                ("🫧 Separation", "3D Scatter", "Real-time receiver separation"),
+                ("🫧 Separation", "2D Scatter", "Real-time receiver separation"),
                 ("☀️ Formation", "Sunburst", "Formation distribution patterns"),
                 ("💧 Win Probability", "Waterfall", "WP impact by situation"),
                 ("🎻 Defense Reaction", "Violin", "Reaction time by position"),
@@ -706,7 +706,7 @@ else:
     
     #### 🎨 Visualization Types:
     - **NFL Field Heatmaps** - 120x53.3 yard field with hotspot analysis
-    - **3D Scatter Plots** - Separation analysis on field
+    - **2D Scatter Plots** - Separation analysis on field
     - **Radar Charts** - Route efficiency metrics
     - **Gauge Charts** - Red zone success rates
     - **Violin Plots** - Reaction time distributions
