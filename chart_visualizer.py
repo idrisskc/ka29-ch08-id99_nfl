@@ -629,6 +629,119 @@ def create_step_chart(df, kpi_name):
         return None
 
 
+def create_scatter_3d_chart(df, kpi_name):
+    """Create 3D Scatter Plot for Separation Analysis"""
+    try:
+        if all(col in df.columns for col in ['x_position', 'y_position', 'min_separation']):
+            # Prepare color mapping for separation categories
+            color_map = {
+                'Wide Open': '#32CD32',      # Green
+                'Open': '#FFD700',           # Gold
+                'Tight Coverage': '#FFA500', # Orange
+                'Blanketed': '#C1121F'       # Red
+            }
+            
+            fig = go.Figure()
+            
+            # If we have separation categories, plot by category
+            if 'separation_category' in df.columns:
+                for category in df['separation_category'].unique():
+                    df_cat = df[df['separation_category'] == category].head(50)
+                    
+                    fig.add_trace(go.Scatter3d(
+                        x=df_cat['x_position'],
+                        y=df_cat['y_position'],
+                        z=df_cat['min_separation'],
+                        mode='markers',
+                        name=category,
+                        marker=dict(
+                            size=df_cat['min_separation'] * 2,
+                            color=color_map.get(category, '#1E90FF'),
+                            opacity=0.8,
+                            line=dict(color='white', width=0.5)
+                        ),
+                        text=[f"Position: ({x:.1f}, {y:.1f})<br>Separation: {z:.2f} yards<br>Category: {cat}" 
+                              for x, y, z, cat in zip(df_cat['x_position'], df_cat['y_position'], 
+                                                       df_cat['min_separation'], df_cat['separation_category'])],
+                        hovertemplate='%{text}<extra></extra>'
+                    ))
+            else:
+                # Simple 3D scatter without categories
+                plot_df = df.head(100)
+                fig.add_trace(go.Scatter3d(
+                    x=plot_df['x_position'],
+                    y=plot_df['y_position'],
+                    z=plot_df['min_separation'],
+                    mode='markers',
+                    marker=dict(
+                        size=plot_df['min_separation'] * 2,
+                        color=plot_df['min_separation'],
+                        colorscale='RdYlGn_r',
+                        opacity=0.8,
+                        colorbar=dict(
+                            title=dict(text="Separation<br>(yards)", side="right"),
+                            tickfont=dict(color=TEXT_COLOR)
+                        )
+                    ),
+                    text=[f"Position: ({x:.1f}, {y:.1f})<br>Separation: {z:.2f} yards" 
+                          for x, y, z in zip(plot_df['x_position'], plot_df['y_position'], 
+                                             plot_df['min_separation'])],
+                    hovertemplate='%{text}<extra></extra>'
+                ))
+            
+            # NFL Field dimensions overlay
+            fig.update_layout(
+                title=f"{kpi_name} - 3D Field Analysis",
+                paper_bgcolor=COLOR_BG,
+                font_color=TEXT_COLOR,
+                height=700,
+                scene=dict(
+                    xaxis=dict(
+                        title='Field Position (Yards Downfield)',
+                        range=[0, 120],
+                        showgrid=True,
+                        gridcolor='rgba(255,255,255,0.2)',
+                        backgroundcolor=COLOR_PANEL,
+                        tickfont=dict(color=TEXT_COLOR)
+                    ),
+                    yaxis=dict(
+                        title='Lateral Position (Yards)',
+                        range=[0, 53.3],
+                        showgrid=True,
+                        gridcolor='rgba(255,255,255,0.2)',
+                        backgroundcolor=COLOR_PANEL,
+                        tickfont=dict(color=TEXT_COLOR)
+                    ),
+                    zaxis=dict(
+                        title='Separation (Yards)',
+                        showgrid=True,
+                        gridcolor='rgba(255,255,255,0.2)',
+                        backgroundcolor=COLOR_PANEL,
+                        tickfont=dict(color=TEXT_COLOR)
+                    ),
+                    bgcolor=COLOR_PANEL,
+                    camera=dict(
+                        eye=dict(x=1.5, y=1.5, z=1.3),
+                        center=dict(x=0, y=0, z=0)
+                    )
+                ),
+                showlegend=True,
+                legend=dict(
+                    x=0.02,
+                    y=0.98,
+                    bgcolor='rgba(27, 38, 59, 0.8)',
+                    bordercolor=COLOR_GOLD,
+                    borderwidth=1,
+                    font=dict(color=TEXT_COLOR)
+                )
+            )
+            
+            return fig
+    except Exception as e:
+        st.error(f"3D scatter error: {e}")
+        return None
+
+
 def create_scatter_2d_chart(df, kpi_name):
     """Create 2D Scatter Plot for Separation Analysis"""
     try:
@@ -678,9 +791,6 @@ def create_scatter_2d_chart(df, kpi_name):
     except Exception as e:
         st.error(f"2D scatter error: {e}")
         return None
-
-
-def create_scatter_3d_chart(df, kpi_name):
     """Create 3D Scatter Plot for Separation Analysis"""
     try:
         if all(col in df.columns for col in ['x_position', 'y_position', 'min_separation']):
@@ -767,9 +877,14 @@ def visualize_kpi(kpi_name, kpi_data, chart_type_hint=None):
         elif 'route' in kpi_lower or 'efficiency' in kpi_lower:
             return create_radar_chart(kpi_data, kpi_name)
         
-        # Bubble/2D for separation
+        # 3D/2D Scatter for separation
         elif 'separation' in kpi_lower:
-            if 'separation_category' in kpi_data.columns:
+            if 'separation_category' in kpi_data.columns and 'x_position' in kpi_data.columns:
+                # Try 3D first, fallback to 2D if it fails
+                fig = create_scatter_3d_chart(kpi_data, kpi_name)
+                if fig:
+                    return fig
+                # Fallback to 2D
                 fig = create_scatter_2d_chart(kpi_data, kpi_name)
                 if fig:
                     return fig
