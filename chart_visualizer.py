@@ -65,12 +65,15 @@ def create_heatmap_chart(df, kpi_name):
                     [1, '#FF0000']       # Red (hottest/high activity)
                 ],
                 colorbar=dict(
-                    title="Activity<br>Intensity",
-                    titleside="right",
+                    title=dict(
+                        text="Activity<br>Intensity",
+                        side="right"
+                    ),
                     tickmode="linear",
                     tick0=0,
-                    dtick=pivot_df.values.max() / 5,
-                    tickfont=dict(color=TEXT_COLOR)
+                    dtick=pivot_df.values.max() / 5 if pivot_df.values.max() > 0 else 1,
+                    tickfont=dict(color=TEXT_COLOR),
+                    tickcolor=TEXT_COLOR
                 ),
                 hoverongaps=False,
                 hovertemplate='<b>Field Position</b><br>' +
@@ -626,6 +629,57 @@ def create_step_chart(df, kpi_name):
         return None
 
 
+def create_scatter_2d_chart(df, kpi_name):
+    """Create 2D Scatter Plot for Separation Analysis"""
+    try:
+        if all(col in df.columns for col in ['x_position', 'y_position', 'min_separation']):
+            fig = px.scatter(
+                df.head(150),
+                x='x_position',
+                y='y_position',
+                color='separation_category' if 'separation_category' in df.columns else 'min_separation',
+                size='min_separation',
+                hover_data=['min_separation', 'avg_separation'] if 'avg_separation' in df.columns else ['min_separation'],
+                template='plotly_dark',
+                title=f"{kpi_name} - Field Position Analysis",
+                color_discrete_sequence=NFL_COLORS
+            )
+            
+            fig.update_layout(
+                paper_bgcolor=COLOR_BG,
+                plot_bgcolor=COLOR_PANEL,
+                font_color=TEXT_COLOR,
+                height=600,
+                xaxis=dict(
+                    title='Field Position (Yards Downfield)',
+                    range=[0, 120],
+                    showgrid=True,
+                    gridcolor='rgba(255,255,255,0.1)'
+                ),
+                yaxis=dict(
+                    title='Lateral Position (Yards)',
+                    range=[0, 53.3],
+                    showgrid=True,
+                    gridcolor='rgba(255,255,255,0.1)'
+                )
+            )
+            
+            # Add red zone marker
+            fig.add_vrect(
+                x0=100, x1=120,
+                fillcolor="rgba(193, 18, 31, 0.1)",
+                layer="below",
+                line_width=0,
+                annotation_text="Red Zone",
+                annotation_position="top left"
+            )
+            
+            return fig
+    except Exception as e:
+        st.error(f"2D scatter error: {e}")
+        return None
+
+
 def create_scatter_3d_chart(df, kpi_name):
     """Create 3D Scatter Plot for Separation Analysis"""
     try:
@@ -713,10 +767,10 @@ def visualize_kpi(kpi_name, kpi_data, chart_type_hint=None):
         elif 'route' in kpi_lower or 'efficiency' in kpi_lower:
             return create_radar_chart(kpi_data, kpi_name)
         
-        # Bubble/3D for separation
+        # Bubble/2D for separation
         elif 'separation' in kpi_lower:
             if 'separation_category' in kpi_data.columns:
-                fig = create_scatter_3d_chart(kpi_data, kpi_name)
+                fig = create_scatter_2d_chart(kpi_data, kpi_name)
                 if fig:
                     return fig
             return create_bubble_chart(kpi_data, kpi_name)
