@@ -467,11 +467,11 @@ def calculate_all_strategic_kpis(df):
 
 
 # =======================================================
-# 🎯 Individual Strategic KPI Functions
+# 🎯 Individual Strategic KPI Functions (OPTIMIZED)
 # =======================================================
 
 def calculate_qb_pressure_performance(df):
-    """QB Pressure Performance Matrix"""
+    """QB Pressure Performance Matrix with Field Position"""
     try:
         cols_needed = ['s', 'a', 'player_role']
         if not all(col in df.columns for col in cols_needed):
@@ -481,91 +481,232 @@ def calculate_qb_pressure_performance(df):
         if len(qb_df) == 0:
             return pd.DataFrame({'metric': ['No QB data'], 'value': [0]})
         
-        pressure_df = qb_df.groupby('play_id').agg({'s': 'mean', 'a': 'mean'}).reset_index()
-        pressure_df['pressure_score'] = (pressure_df['s'] * pressure_df['a']) / 10
+        # Calculate pressure metrics by field position
+        if 'x' in qb_df.columns:
+            qb_df['field_zone'] = pd.cut(
+                qb_df['x'], 
+                bins=[0, 30, 60, 90, 120],
+                labels=['Own Territory', 'Midfield Near', 'Midfield Far', 'Opponent Territory']
+            )
         
-        return pressure_df.head(100)
+        pressure_df = qb_df.groupby('play_id').agg({
+            's': ['mean', 'max'],
+            'a': ['mean', 'max'],
+            'x': 'mean',
+            'y': 'mean'
+        }).reset_index()
+        
+        pressure_df.columns = ['play_id', 'avg_speed', 'max_speed', 'avg_accel', 'max_accel', 'avg_x', 'avg_y']
+        
+        # Pressure score combining speed and acceleration
+        pressure_df['pressure_score'] = (
+            (pressure_df['max_speed'] * 0.5 + pressure_df['avg_speed'] * 0.3) * 
+            (pressure_df['max_accel'] * 0.2 + pressure_df['avg_accel'] * 0.1)
+        ) / 10
+        
+        # Classify pressure intensity
+        pressure_df['pressure_level'] = pd.cut(
+            pressure_df['pressure_score'],
+            bins=[0, 2, 4, 100],
+            labels=['Low Pressure', 'Medium Pressure', 'High Pressure']
+        )
+        
+        return pressure_df.head(200)
+        
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
 
 def calculate_route_efficiency_advanced(df):
-    """Route Efficiency Analysis"""
+    """Route Efficiency Analysis with Depth and Separation"""
     try:
         if 'player_role' not in df.columns:
             return pd.DataFrame({'metric': ['No route data'], 'value': [0]})
         
         receiver_df = df[df['player_role'].str.contains('Receiver|Route', case=False, na=False)].copy()
         
-        if 's' in receiver_df.columns and 'x' in receiver_df.columns and len(receiver_df) > 0:
-            route_metrics = receiver_df.groupby('play_id').agg({
-                's': 'mean',
-                'x': lambda x: x.max() - x.min()
-            }).reset_index()
-            route_metrics.columns = ['play_id', 'avg_speed', 'x_range']
-            route_metrics['efficiency'] = route_metrics['x_range'] / (route_metrics['avg_speed'] + 1)
-            
-            return route_metrics.head(100)
+        if len(receiver_df) == 0 or 's' not in receiver_df.columns:
+            return pd.DataFrame({'metric': ['No data'], 'value': [0]})
         
-        return pd.DataFrame({'metric': ['No data'], 'value': [0]})
+        # Calculate route metrics by play
+        route_metrics = receiver_df.groupby('play_id').agg({
+            's': ['mean', 'max'],
+            'x': ['min', 'max', 'mean'],
+            'y': ['std', 'mean'],
+            'a': 'mean'
+        }).reset_index()
+        
+        route_metrics.columns = ['play_id', 'avg_speed', 'max_speed', 'x_start', 'x_end', 'avg_x', 'y_variance', 'avg_y', 'avg_accel']
+        
+        # Route depth (yards downfield)
+        route_metrics['route_depth'] = route_metrics['x_end'] - route_metrics['x_start']
+        
+        # Route efficiency: depth gained per unit of speed/acceleration
+        route_metrics['efficiency_score'] = (
+            route_metrics['route_depth'] / 
+            (route_metrics['avg_speed'] + 1) * 
+            (1 + route_metrics['avg_accel'].fillna(0) / 2)
+        )
+        
+        # Classify route types by depth and lateral movement
+        route_metrics['route_type'] = route_metrics.apply(lambda row: 
+            'Deep Route' if row['route_depth'] > 15 else
+            'Intermediate Route' if row['route_depth'] > 7 else
+            'Short Route',
+            axis=1
+        )
+        
+        route_metrics['lateral_movement'] = route_metrics.apply(lambda row:
+            'High Lateral' if row['y_variance'] > 5 else
+            'Medium Lateral' if row['y_variance'] > 2 else
+            'Vertical',
+            axis=1
+        )
+        
+        return route_metrics.head(150)
+        
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
 
 def calculate_coverage_heatmap(df):
-    """Coverage Vulnerability Heatmap"""
+    """Coverage Vulnerability Heatmap with NFL Field Dimensions"""
     try:
         if 'x' not in df.columns or 'y' not in df.columns:
             return pd.DataFrame({'x_zone': [0], 'y_zone': [0], 'density': [0]})
         
-        df_copy = df.copy()
-        df_copy['x_zone'] = pd.cut(df_copy['x'], bins=10, labels=False)
-        df_copy['y_zone'] = pd.cut(df_copy['y'], bins=6, labels=False)
+        # NFL Field: 120 yards (0-120), Width: 53.3 yards (0-53.3)
+        # Filter for valid field positions
+        df_field = df[(df['x'] >= 0) & (df['x'] <= 120) & 
+                      (df['y'] >= 0) & (df['y'] <= 53.3)].copy()
         
-        heatmap = df_copy.groupby(['x_zone', 'y_zone']).size().reset_index(name='density')
+        if len(df_field) == 0:
+            return pd.DataFrame({'x_zone': [0], 'y_zone': [0], 'density': [0]})
         
-        return heatmap.head(300)
+        # Create zones: 10-yard intervals (12 zones) x 5-yard width intervals (11 zones)
+        df_field['x_zone'] = (df_field['x'] / 10).astype(int)  # 12 zones across length
+        df_field['y_zone'] = (df_field['y'] / 5).astype(int)   # 11 zones across width
+        
+        # Add field position labels
+        df_field['field_position'] = df_field['x_zone'].apply(
+            lambda x: f"Yard {x*10}-{(x+1)*10}"
+        )
+        
+        # Calculate density and frequency
+        heatmap = df_field.groupby(['x_zone', 'y_zone']).agg({
+            'x': ['count', 'mean'],
+            'y': 'mean'
+        }).reset_index()
+        
+        heatmap.columns = ['x_zone', 'y_zone', 'density', 'avg_x', 'avg_y']
+        
+        # Add normalized density for color scaling
+        heatmap['density_normalized'] = (
+            (heatmap['density'] - heatmap['density'].min()) / 
+            (heatmap['density'].max() - heatmap['density'].min() + 1)
+        )
+        
+        return heatmap
+        
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
 
 def calculate_pass_timing_windows(df):
-    """Pass Timing Window Analysis"""
+    """Pass Timing Window Analysis with Snap to Release"""
     try:
         if 'frame_id' not in df.columns:
             return pd.DataFrame({'timing': ['No data'], 'count': [0]})
         
-        timing_df = df.groupby('play_id')['frame_id'].agg(['min', 'max', 'count']).reset_index()
-        timing_df['window_duration'] = timing_df['max'] - timing_df['min']
-        timing_df['timing_category'] = pd.cut(timing_df['window_duration'], bins=[0, 10, 20, 50], labels=['Quick', 'Medium', 'Long'])
+        timing_df = df.groupby('play_id').agg({
+            'frame_id': ['min', 'max', 'count'],
+            's': 'mean',
+            'a': 'mean'
+        }).reset_index()
         
-        return timing_df[['play_id', 'window_duration', 'timing_category']].head(100)
+        timing_df.columns = ['play_id', 'start_frame', 'end_frame', 'total_frames', 'avg_speed', 'avg_accel']
+        
+        # Convert frames to seconds (assuming 10 frames per second)
+        timing_df['duration_seconds'] = timing_df['total_frames'] / 10
+        
+        # Classify timing windows
+        timing_df['timing_window'] = pd.cut(
+            timing_df['duration_seconds'],
+            bins=[0, 2, 3, 4, 100],
+            labels=['Quick Release (<2s)', 'Standard (2-3s)', 'Extended (3-4s)', 'Delayed (>4s)']
+        )
+        
+        # Calculate release efficiency
+        timing_df['release_efficiency'] = (
+            timing_df['avg_speed'] / (timing_df['duration_seconds'] + 0.1)
+        )
+        
+        # Add pressure indicators
+        timing_df['pressure_indicator'] = timing_df['avg_accel'].apply(
+            lambda x: 'High Pressure' if x > 2 else 'Medium Pressure' if x > 1 else 'Low Pressure'
+        )
+        
+        return timing_df.head(150)
+        
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
 
 def calculate_player_separation(df):
-    """Player Separation Metrics"""
+    """Player Separation Metrics with Real-time Distance Calculations"""
     try:
-        if 'x' not in df.columns or 'player_role' not in df.columns:
+        if 'x' not in df.columns or 'y' not in df.columns or 'player_role' not in df.columns:
             return pd.DataFrame({'separation': [5.0]})
         
-        receiver_df = df[df['player_role'].str.contains('Receiver', case=False, na=False)]
-        defense_df = df[df['player_side'].str.contains('Defense', case=False, na=False)]
+        # Get receivers and defenders
+        receiver_df = df[df['player_role'].str.contains('Receiver|Pass', case=False, na=False)].copy()
+        defense_df = df[df['player_side'].str.contains('Defense', case=False, na=False) | 
+                        df['player_role'].str.contains('Coverage|DB', case=False, na=False)].copy()
         
-        if len(receiver_df) > 0 and len(defense_df) > 0:
-            separation_data = []
-            for play in receiver_df['play_id'].unique()[:50]:
-                rec_play = receiver_df[receiver_df['play_id'] == play]
-                def_play = defense_df[defense_df['play_id'] == play]
-                
-                if len(rec_play) > 0 and len(def_play) > 0:
-                    avg_sep = np.sqrt((rec_play['x'].mean() - def_play['x'].mean())**2 + (rec_play['y'].mean() - def_play['y'].mean())**2)
-                    separation_data.append({'play_id': play, 'separation': avg_sep})
+        if len(receiver_df) == 0 or len(defense_df) == 0:
+            return pd.DataFrame({'separation': [5.0]})
+        
+        separation_data = []
+        
+        # Calculate separation for each play
+        for play_id in receiver_df['play_id'].unique()[:100]:
+            rec_play = receiver_df[receiver_df['play_id'] == play_id]
+            def_play = defense_df[defense_df['play_id'] == play_id]
             
-            return pd.DataFrame(separation_data) if separation_data else pd.DataFrame({'separation': [5.0]})
+            if len(rec_play) > 0 and len(def_play) > 0:
+                for _, receiver in rec_play.iterrows():
+                    # Calculate distance to nearest defender
+                    distances = []
+                    for _, defender in def_play.iterrows():
+                        dist = np.sqrt(
+                            (receiver['x'] - defender['x'])**2 + 
+                            (receiver['y'] - defender['y'])**2
+                        )
+                        distances.append(dist)
+                    
+                    if distances:
+                        min_separation = min(distances)
+                        avg_separation = np.mean(distances)
+                        
+                        separation_data.append({
+                            'play_id': play_id,
+                            'min_separation': min_separation,
+                            'avg_separation': avg_separation,
+                            'x_position': receiver['x'],
+                            'y_position': receiver['y'],
+                            'separation_category': 
+                                'Wide Open' if min_separation > 5 else
+                                'Open' if min_separation > 3 else
+                                'Tight Coverage' if min_separation > 1.5 else
+                                'Blanketed'
+                        })
+        
+        if separation_data:
+            sep_df = pd.DataFrame(separation_data)
+            return sep_df
         
         return pd.DataFrame({'separation': [5.0]})
+        
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
@@ -602,7 +743,7 @@ def calculate_win_probability_impact(df):
 
 
 def calculate_defensive_reaction(df):
-    """Defensive Reaction Time"""
+    """Defensive Reaction Time with Position-Based Analysis"""
     try:
         if 'a' not in df.columns or 'player_side' not in df.columns:
             return pd.DataFrame({'reaction_time': [1.2]})
@@ -611,28 +752,85 @@ def calculate_defensive_reaction(df):
         if len(defense_df) == 0:
             return pd.DataFrame({'reaction_time': [1.2]})
         
+        # Calculate reaction metrics
         defense_df['reaction_time'] = defense_df['s'] / (defense_df['a'].abs() + 0.1)
-        reaction_stats = defense_df['reaction_time'].describe().to_frame().T
         
-        return reaction_stats
+        # Group by defensive position if available
+        if 'player_position' in defense_df.columns:
+            reaction_by_position = defense_df.groupby('player_position').agg({
+                'reaction_time': ['mean', 'median', 'std'],
+                's': 'mean',
+                'a': 'mean'
+            }).reset_index()
+            reaction_by_position.columns = ['position', 'avg_reaction', 'median_reaction', 'std_reaction', 'avg_speed', 'avg_accel']
+        else:
+            # Overall reaction stats
+            reaction_by_position = pd.DataFrame({
+                'metric': ['Mean', 'Median', 'Std Dev', 'Min', 'Max'],
+                'reaction_time': [
+                    defense_df['reaction_time'].mean(),
+                    defense_df['reaction_time'].median(),
+                    defense_df['reaction_time'].std(),
+                    defense_df['reaction_time'].min(),
+                    defense_df['reaction_time'].max()
+                ]
+            })
+        
+        # Add reaction categories
+        if 'position' in reaction_by_position.columns:
+            reaction_by_position['reaction_category'] = reaction_by_position['avg_reaction'].apply(
+                lambda x: 'Elite (<0.8s)' if x < 0.8 else
+                         'Above Average (0.8-1.2s)' if x < 1.2 else
+                         'Average (1.2-1.6s)' if x < 1.6 else
+                         'Below Average (>1.6s)'
+            )
+        
+        return reaction_by_position
+        
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
 
 def calculate_redzone_success(df):
-    """Red Zone Success Rate"""
+    """Red Zone Success Rate with Position Analysis"""
     try:
         if 'absolute_yardline_number' not in df.columns:
             return pd.DataFrame({'metric': ['Red Zone Success'], 'value': [65.5]})
         
         redzone_df = df[df['absolute_yardline_number'] <= 20].copy()
         
-        if 'yards_gained' in redzone_df.columns and len(redzone_df) > 0:
-            success_rate = (redzone_df['yards_gained'] > 0).mean() * 100
-        else:
-            success_rate = 65.0
+        if len(redzone_df) == 0:
+            return pd.DataFrame({'metric': ['No Red Zone Data'], 'value': [0]})
         
-        return pd.DataFrame({'metric': ['Red Zone Success Rate'], 'value': [success_rate]})
+        # Calculate success metrics by yard line
+        if 'yards_gained' in redzone_df.columns:
+            # Define success criteria
+            redzone_df['is_success'] = (
+                (redzone_df['yards_gained'] > 0) | 
+                (redzone_df['pass_result'].str.contains('C|TD', case=False, na=False))
+            ).astype(int)
+            
+            # Group by yard line and position on field
+            success_by_position = redzone_df.groupby('absolute_yardline_number').agg({
+                'is_success': ['mean', 'sum', 'count'],
+                'yards_gained': 'mean'
+            }).reset_index()
+            
+            success_by_position.columns = ['yard_line', 'success_rate', 'total_success', 'attempts', 'avg_yards']
+            success_by_position['success_rate'] = (success_by_position['success_rate'] * 100).round(2)
+            success_by_position['zone'] = pd.cut(
+                success_by_position['yard_line'], 
+                bins=[0, 5, 10, 20], 
+                labels=['Goal Line (0-5)', 'Inner Red Zone (6-10)', 'Outer Red Zone (11-20)']
+            )
+            
+            return success_by_position
+        else:
+            # Fallback: just count plays by position
+            position_counts = redzone_df.groupby('absolute_yardline_number').size().reset_index(name='play_count')
+            position_counts['success_rate'] = 65.0  # Default estimate
+            return position_counts
+            
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
@@ -655,18 +853,44 @@ def calculate_tempo_analysis(df):
 
 
 def calculate_movement_heatmap(df):
-    """Player Movement Density"""
+    """Player Movement Density on NFL Field Dimensions"""
     try:
         if 'x' not in df.columns or 'y' not in df.columns:
             return pd.DataFrame({'x_bin': [50], 'y_bin': [25], 'density': [10]})
         
-        df_copy = df.copy()
-        df_copy['x_bin'] = (df_copy['x'] / 10).astype(int)
-        df_copy['y_bin'] = (df_copy['y'] / 5).astype(int)
+        # Filter for valid NFL field coordinates
+        df_field = df[(df['x'] >= 0) & (df['x'] <= 120) & 
+                      (df['y'] >= 0) & (df['y'] <= 53.3)].copy()
         
-        movement_heat = df_copy.groupby(['x_bin', 'y_bin']).size().reset_index(name='density')
+        if len(df_field) == 0:
+            return pd.DataFrame({'x_bin': [50], 'y_bin': [25], 'density': [10]})
         
-        return movement_heat.head(100)
+        # 5-yard bins for precise movement tracking
+        df_field['x_bin'] = (df_field['x'] / 5).astype(int)  # 24 bins
+        df_field['y_bin'] = (df_field['y'] / 5).astype(int)  # 11 bins
+        
+        # Calculate movement intensity
+        movement_heat = df_field.groupby(['x_bin', 'y_bin']).agg({
+            'x': 'count',
+            's': ['mean', 'max'],  # Speed metrics
+            'a': 'mean'  # Acceleration
+        }).reset_index()
+        
+        movement_heat.columns = ['x_bin', 'y_bin', 'frequency', 'avg_speed', 'max_speed', 'avg_acceleration']
+        
+        # Calculate movement intensity score
+        movement_heat['intensity'] = (
+            movement_heat['frequency'] * 
+            (movement_heat['avg_speed'].fillna(1) / 10) *
+            (1 + movement_heat['avg_acceleration'].fillna(0) / 5)
+        )
+        
+        # Convert bins back to actual yard positions
+        movement_heat['x_yards'] = movement_heat['x_bin'] * 5
+        movement_heat['y_yards'] = movement_heat['y_bin'] * 5
+        
+        return movement_heat.head(300)
+        
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
