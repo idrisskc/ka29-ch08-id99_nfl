@@ -524,7 +524,7 @@ def calculate_coverage_heatmap(df):
         
         heatmap = df_copy.groupby(['x_zone', 'y_zone']).size().reset_index(name='density')
         
-        return heatmap.head(100)
+        return heatmap.head(300)
     except Exception as e:
         return pd.DataFrame({'error': [str(e)]})
 
