@@ -1,9 +1,85 @@
 # =======================================================
-# app.py - NFL Big Data Bowl 2026 Dashboard (COMPLETE OPTIMIZED)
+# app.py - NFL Big Data Bowl 2026 Dashboard (PRODUCTION READY)
+# With Auto-Refresh Scheduler + Optimized 700MB+ File Loading
 # =======================================================
 
 import sys
 import streamlit as st
+import os
+
+# =======================================================
+# 🔧 IMPORTS OPTIMISÉS
+# =======================================================
+try:
+    from data_loader import load_nfl_data, clear_all_caches, get_data_loader
+    from scheduler import setup_dashboard_scheduler, initialize_session_state, add_keepalive_ping
+    DATA_LOADER_AVAILABLE = True
+except ImportError:
+    DATA_LOADER_AVAILABLE = False
+    st.warning("⚠️ Advanced features (scheduler, optimized loading) not available. Using fallback mode.")
+
+# =======================================================
+# 📦 IMPORTS PRINCIPAUX
+# =======================================================
+import pandas as pd
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from datetime import datetime
+import os
+
+try:
+    from utils import (
+        load_data_from_kaggle, 
+        compute_all_kpis,
+        calculate_all_strategic_kpis,
+        load_local_data,
+        get_column_info,
+        detect_available_columns,
+        get_data_summary
+    )
+    from chart_visualizer import visualize_kpi
+    from kaggle_loader import (
+        get_kaggle_loader,
+        kaggle_authentication_ui,
+        kaggle_data_download_ui,
+        display_kaggle_data_explorer
+    )
+    KAGGLE_AVAILABLE = True
+except ImportError as e:
+    st.error(f"❌ Error importing modules: {str(e)}")
+    KAGGLE_AVAILABLE = False
+    st.info("Make sure all required files are in the same directory")
+
+# =======================================================
+# ⚙️ PAGE CONFIGURATION
+# =======================================================
+st.set_page_config(
+    page_title="NFL Big Data Bowl 2026", 
+    layout="wide", 
+    page_icon="🏈",
+    initial_sidebar_state="expanded"
+)
+
+# =======================================================
+# 🔄 INITIALIZE SCHEDULER & SESSION
+# =======================================================
+if DATA_LOADER_AVAILABLE:
+    initialize_session_state()
+    
+    # Setup auto-refresh (30 minutes)
+    scheduler, refresh_count = setup_dashboard_scheduler(
+        refresh_interval_minutes=30,
+        show_status=True,
+        enable_autorefresh=True
+    )
+    
+    # Add keepalive ping
+    add_keepalive_ping()
+    
+    # Display refresh info
+    if refresh_count > 0:
+        st.toast(f"🔄 Dashboard auto-refreshed ({refresh_count})", icon="✅")
 
 # =======================================================
 # 🔍 SECTION DEBUG - À AFFICHER EN PREMIER
@@ -286,7 +362,52 @@ data_source = st.sidebar.radio(
 )
 
 # =======================================================
-# 🔐 KAGGLE API OPTION
+# 🔐 KAGGLE AUTHENTICATION & DATA LOADING
+# =======================================================
+if KAGGLE_AVAILABLE:
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("## 🔐 Kaggle Integration")
+    
+    # Authentication UI
+    authenticated, kaggle_loader = kaggle_authentication_ui()
+    
+    # Data download UI (only if authenticated)
+    if authenticated:
+        kaggle_data_download_ui(kaggle_loader)
+        
+        # Check if data is available
+        csv_files = kaggle_loader.find_csv_files("*.csv")
+        if csv_files:
+            st.sidebar.success(f"✅ {len(csv_files)} CSV files found")
+            
+            # Quick load button
+            if st.sidebar.button("⚡ Quick Load Data"):
+                # Find train files
+                train_files = [f for f in csv_files if 'train' in str(f).lower() or 'input' in str(f).lower()]
+                
+                if train_files:
+                    st.info(f"📊 Loading from {len(train_files)} files...")
+                    
+                    # Load first few files
+                    dfs = []
+                    for file_path in train_files[:5]:  # Limit to first 5 files
+                        df = kaggle_loader.load_csv_file(
+                            file_path,
+                            nrows=50000,  # Limit rows per file
+                            low_memory=False
+                        )
+                        if not df.empty:
+                            dfs.append(df)
+                    
+                    if dfs:
+                        st.session_state.full_df = pd.concat(dfs, ignore_index=True)
+                        st.session_state.data_loaded = True
+                        st.session_state.strategic_kpis_calculated = False
+                        st.success(f"✅ Loaded {len(st.session_state.full_df):,} rows!")
+                        st.rerun()
+
+# =======================================================
+# 📥 ALTERNATIVE DATA LOADING (Fallback)
 # =======================================================
 if data_source == "Kaggle API":
     st.sidebar.markdown("#### Kaggle Credentials")
